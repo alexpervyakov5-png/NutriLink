@@ -4,7 +4,7 @@ import 'bloc/navigation_bloc.dart';
 import 'screens/home_screen.dart';
 import 'screens/diary_screen.dart';
 import 'screens/stats_screen.dart';
-
+import 'screens/measurements_screen.dart';
 void main() => runApp(const NutriLinkApp());
 
 class NutriLinkApp extends StatelessWidget {
@@ -33,7 +33,7 @@ class MainScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // Убран leading и добавлен центрированный title
+
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -53,7 +53,7 @@ class MainScreen extends StatelessWidget {
             ),
           ],
         ),
-        centerTitle: true, // Важно для центрирования
+        centerTitle: true, 
         actions: [
           IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
@@ -66,7 +66,8 @@ class MainScreen extends StatelessWidget {
           switch (state.index) {
             case 0: return const HomeScreen();
             case 1: return const DiaryScreen();
-            case 2: return const StatsScreen();
+            case 2: return const MeasurementsScreen();
+            case 3: return const StatsScreen();
             default: return const HomeScreen();
           }
         },
@@ -111,10 +112,19 @@ class _BottomNavigation extends StatelessWidget {
             ),
             BottomNavigationBarItem(
               icon: Image.asset(
-                'assets/icons/stats.png',
+                'assets/icons/measurements.png',
                 width: 24,
                 height: 24,
                 color: state.index == 2 ? const Color(0xFFC3F7CE) : Colors.grey,
+              ),
+              label: 'Замеры',
+            ),
+            BottomNavigationBarItem(
+              icon: Image.asset(
+                'assets/icons/stats.png',
+                width: 24,
+                height: 24,
+                color: state.index == 3 ? const Color(0xFFC3F7CE) : Colors.grey,
               ),
               label: 'Статистика',
             ),

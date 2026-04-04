@@ -1,4 +1,4 @@
-name: karina
+name: Nutrilink
 description: "A new Flutter project."
 publish_to: 'none'
 version: 1.0.0+1
@@ -12,6 +12,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_bloc: ^8.1.3
   bloc: ^8.1.1
+  page_transition: 2.1.0
+  equatable: ^2.0.5
+  dartz: ^0.10.1 
 
 dev_dependencies:
   flutter_test:
@@ -26,3 +29,9 @@ flutter:
     - assets/icons/book.png
     - assets/icons/measurements.png
     - assets/icons/stats.png
+    - assets/icons/
+    - assets/images/           
+    - assets/images/breakfast.png
+    - assets/images/lunch.png
+    - assets/images/dinner.png
+    - assets/images/snack.png

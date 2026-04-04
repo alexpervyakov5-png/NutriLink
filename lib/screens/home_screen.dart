@@ -134,7 +134,7 @@ class HomeScreen extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
             onTap: () async {
-              // TODO: Реализовать выбор даты
+              // Реализовать выбор даты
             },
           ),
         ),

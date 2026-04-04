@@ -1,21 +1,9 @@
-import 'package:bloc/bloc.dart';
-
-abstract class NavigationEvent {}
-
-class TabTapped extends NavigationEvent {
-  final int index;
-  TabTapped(this.index);
-}
-
-class NavigationState {
-  final int index;
-  NavigationState(this.index);
-}
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'navigation_event.dart';
+import 'navigation_state.dart';
 
 class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
-  NavigationBloc() : super(NavigationState(0)) {
-    on<TabTapped>((event, emit) {
-      emit(NavigationState(event.index));
-    });
+  NavigationBloc() : super(const NavigationState(0)) {
+    on<TabTapped>((event, emit) => emit(NavigationState(event.index)));
   }
 }

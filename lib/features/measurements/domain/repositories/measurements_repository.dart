@@ -3,6 +3,11 @@ import '../../../../core/error/failures.dart';
 import '../entities/measurement.dart';
 
 abstract class MeasurementsRepository {
-  Future<Either<Failure, List<Measurement>>> getMeasurements();
-  Future<Either<Failure, void>> addMeasurement(Measurement measurement);
+  Future<Either<Failure, List<Measurement>>> getMeasurements(
+    MeasurementPeriod period,
+    DateTime? startDate,
+    DateTime? endDate,
+  );
+  Future<Either<Failure, void>> saveMeasurement(Measurement measurement);
+  Future<Either<Failure, void>> deleteMeasurement(String id);
 }

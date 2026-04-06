@@ -14,7 +14,8 @@ dependencies:
   bloc: ^8.1.1
   page_transition: 2.1.0
   equatable: ^2.0.5
-  dartz: ^0.10.1 
+  dartz: ^0.10.1
+  fl_chart: ^0.66.0 
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +36,7 @@ flutter:
     - assets/images/lunch.png
     - assets/images/dinner.png
     - assets/images/snack.png
+    - assets/images/protein.png
+    - assets/images/fats.png
+    - assets/images/carbs.png
+    - assets/images/calories.png

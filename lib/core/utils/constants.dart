@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Основные цвета из макета
+  // Основные цвета
   static const Color background = Color(0xFF2F2F2F);
   static const Color backgroundSecondary = Color(0xFF3F3F3F);
   static const Color card = Color(0xFF4A4A4A);
@@ -24,6 +24,7 @@ class AppColors {
 class AppStrings {
   static const String appName = 'NutriLink';
   static const String assetIcons = 'assets/icons/';
+  static const String assetImages = 'assets/images/';
 }
 
 // Для будущего API

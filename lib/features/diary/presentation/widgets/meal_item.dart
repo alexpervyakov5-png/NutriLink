@@ -4,21 +4,74 @@ import '../../domain/entities/meal.dart';
 
 class MealItem extends StatelessWidget {
   final Meal meal;
-  const MealItem({super.key, required this.meal});
+  final VoidCallback? onEditTap;
+
+  const MealItem({
+    super.key,
+    required this.meal,
+    this.onEditTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.backgroundSecondary, width: 1))),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(meal.name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Text(meal.weight, style: const TextStyle(color: AppColors.textHint, fontSize: 12)),
-        ])),
-        Text('${meal.calories} ккал', style: const TextStyle(color: AppColors.accent, fontSize: 14, fontWeight: FontWeight.w500)),
-      ]),
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundSecondary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.restaurant, color: AppColors.textSecondary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  meal.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  '${meal.weight}г • ${meal.calories} ккал',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ✅ Кнопка редактирования
+          if (onEditTap != null)
+            InkWell(
+              onTap: onEditTap,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Icon(
+                  Icons.edit_outlined,
+                  color: AppColors.textSecondary,
+                  size: 18,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

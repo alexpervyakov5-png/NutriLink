@@ -5,19 +5,23 @@ import 'meal_item.dart';
 
 class MealSection extends StatelessWidget {
   final String title;
-  final String imagePath;  // ✅ Было: IconData icon → Стало: String imagePath
+  final String imagePath;
   final int totalCalories;
   final bool isExpanded;
   final VoidCallback onExpansionChanged;
+  final VoidCallback? onCommentTap;
+  final VoidCallback? onAddTap;  // ✅ Для кнопки "+"
   final List<Meal> items;
 
   const MealSection({
     super.key,
     required this.title,
-    required this.imagePath,  // ✅ Путь к изображению
+    required this.imagePath,
     required this.totalCalories,
     required this.isExpanded,
     required this.onExpansionChanged,
+    this.onCommentTap,
+    this.onAddTap,
     required this.items,
   });
 
@@ -38,7 +42,7 @@ class MealSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  // ✅ Изображение вместо иконки
+                  // Изображение
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
@@ -53,7 +57,6 @@ class MealSection extends StatelessWidget {
                         height: 32,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          // Fallback если изображение не найдено
                           return Icon(
                             _getFallbackIcon(title),
                             color: AppColors.accent,
@@ -91,9 +94,21 @@ class MealSection extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   if (isExpanded) ...[
-                    _actionBtn(Icons.chat_bubble_outline, AppColors.backgroundSecondary),
+                    // 💬 Кнопка комментария
+                    if (onCommentTap != null)
+                      _actionBtn(
+                        Icons.chat_bubble_outline,
+                        AppColors.backgroundSecondary,
+                        onTap: onCommentTap,
+                      ),
                     const SizedBox(width: 6),
-                    _actionBtn(Icons.add, AppColors.accent),
+                    // ➕ Кнопка добавления (вернули!)
+                    if (onAddTap != null)
+                      _actionBtn(
+                        Icons.add,
+                        AppColors.accent,
+                        onTap: onAddTap,
+                      ),
                   ],
                   const SizedBox(width: 4),
                   Icon(
@@ -107,39 +122,39 @@ class MealSection extends StatelessWidget {
           ),
           if (isExpanded) ...[
             const Divider(height: 1, color: AppColors.backgroundSecondary),
-            ...items.map((item) => MealItem(meal: item)),
+            // ✅ Список добавленных блюд
+            ...items.map((item) => MealItem(meal: item, onEditTap: onAddTap)),
           ],
         ],
       ),
     );
   }
 
-  // ✅ Fallback иконки если картинка не загрузится
   IconData _getFallbackIcon(String title) {
     switch (title) {
-      case 'Завтрак':
-        return Icons.free_breakfast;
-      case 'Обед':
-        return Icons.lunch_dining;
-      case 'Ужин':
-        return Icons.dinner_dining;
-      case 'Перекус':
-        return Icons.cookie;
-      default:
-        return Icons.restaurant;
+      case 'Завтрак': return Icons.free_breakfast;
+      case 'Обед': return Icons.lunch_dining;
+      case 'Ужин': return Icons.dinner_dining;
+      case 'Перекус': return Icons.cookie;
+      default: return Icons.restaurant;
     }
   }
 
-  Widget _actionBtn(IconData icon, Color bg) => Container(
-    padding: const EdgeInsets.all(6),
-    decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Icon(
-      icon,
-      color: bg == AppColors.accent ? Colors.white : AppColors.accent,
-      size: 18,
-    ),
-  );
+  Widget _actionBtn(IconData icon, Color bg, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(
+          icon,
+          color: bg == AppColors.accent ? Colors.white : AppColors.accent,
+          size: 18,
+        ),
+      ),
+    );
+  }
 }

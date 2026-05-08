@@ -49,11 +49,11 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  // ✅ Добавили параметр state
+  // Добавили параметр state
   Widget _buildHeaderRow(BuildContext context, StatsState state) {
     return Row(
       children: [
-        // 📅 Выбор периода (компактный)
+        // Выбор периода (компактный)
         Expanded(
           flex: 2,
           child: StatsPeriodSelector(

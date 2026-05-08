@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/constants.dart';
 import '../../domain/entities/meal.dart';
+import '../../domain/entities/meal_type.dart';
+import '../../domain/entities/daily_goals.dart';
 
 class GoalsSection extends StatelessWidget {
   final DailyGoals goals;

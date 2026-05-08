@@ -1,6 +1,7 @@
-enum MealType { breakfast, lunch, dinner, snack }
+import 'package:equatable/equatable.dart';
+import 'meal_type.dart';
 
-class Meal {
+class Meal extends Equatable {
   final String id;
   final String name;
   final String weight;
@@ -8,9 +9,11 @@ class Meal {
   final int protein;
   final int fats;
   final int carbs;
+  final MealType mealType;
   final DateTime createdAt;
+  final String? comment;
 
-  Meal({
+  const Meal({
     required this.id,
     required this.name,
     required this.weight,
@@ -18,22 +21,55 @@ class Meal {
     required this.protein,
     required this.fats,
     required this.carbs,
+    required this.mealType,
     required this.createdAt,
+    this.comment,
   });
-}
 
-class DailyGoals {
-  final int proteinTarget, fatsTarget, carbsTarget, caloriesTarget;
-  final int proteinCurrent, fatsCurrent, carbsCurrent, caloriesCurrent;
+  // ✅ Убираем const из empty(), т.к. конструктор не const из-за DateTime.now()
+  static Meal empty() {
+    return Meal(  // ✅ Без const
+      id: '',
+      name: '',
+      weight: '0г',
+      calories: 0,
+      protein: 0,
+      fats: 0,
+      carbs: 0,
+      mealType: MealType.breakfast,
+      createdAt: DateTime(2000),  // ✅ Const-compatible дата
+    );
+  }
 
-  const DailyGoals({
-    required this.proteinTarget,
-    required this.fatsTarget,
-    required this.carbsTarget,
-    required this.caloriesTarget,
-    required this.proteinCurrent,
-    required this.fatsCurrent,
-    required this.carbsCurrent,
-    required this.caloriesCurrent,
-  });
+  Meal copyWith({
+    String? id,
+    String? name,
+    String? weight,
+    int? calories,
+    int? protein,
+    int? fats,
+    int? carbs,
+    MealType? mealType,
+    DateTime? createdAt,
+    String? comment,
+  }) {
+    return Meal(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      weight: weight ?? this.weight,
+      calories: calories ?? this.calories,
+      protein: protein ?? this.protein,
+      fats: fats ?? this.fats,
+      carbs: carbs ?? this.carbs,
+      mealType: mealType ?? this.mealType,
+      createdAt: createdAt ?? this.createdAt,
+      comment: comment ?? this.comment,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        id, name, weight, calories, protein, fats, carbs,
+        mealType, createdAt, comment,
+      ];
 }

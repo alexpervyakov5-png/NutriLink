@@ -5,16 +5,16 @@ class ProfileRadio<T> extends StatelessWidget {
   final String label;
   final T value;
   final T? groupValue;
-  final ValueChanged<T?>? onChanged;
   final IconData? icon;
+  final ValueChanged<T?>? onChanged;
 
   const ProfileRadio({
     super.key,
     required this.label,
     required this.value,
     required this.groupValue,
-    this.onChanged,
     this.icon,
+    this.onChanged,
   });
 
   @override

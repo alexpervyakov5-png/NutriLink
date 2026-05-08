@@ -4,7 +4,8 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../entities/meal.dart';
 import '../repositories/diary_repository.dart';
-
+import '../../domain/entities/meal_type.dart';
+import '../../domain/entities/daily_goals.dart';
 class GetMealsByTypeParams extends Equatable {
   final MealType type;
   final DateTime date;

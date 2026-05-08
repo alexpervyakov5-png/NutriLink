@@ -1,15 +1,15 @@
 import 'package:dartz/dartz.dart';
+
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/measurement.dart';
 import '../../domain/repositories/measurements_repository.dart';
-import '../datasources/measurements_mock_datasource.dart';
-import '../models/measurement_model.dart';
+import '../datasources/measurements_supabase_datasource.dart';
 
 class MeasurementsRepositoryImpl implements MeasurementsRepository {
-  final MeasurementsMockDataSource mockDataSource;
+  final MeasurementsSupabaseDataSource supabaseDataSource;
 
-  MeasurementsRepositoryImpl({required this.mockDataSource});
+  MeasurementsRepositoryImpl({required this.supabaseDataSource});
 
   @override
   Future<Either<Failure, List<Measurement>>> getMeasurements(
@@ -18,9 +18,15 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
     DateTime? endDate,
   ) async {
     try {
-      final measurements = await mockDataSource.getMeasurements(period, startDate, endDate);
-      return Right(measurements);
+      final result = await supabaseDataSource.getMeasurements(
+        period: period,
+        startDate: startDate,
+        endDate: endDate,
+      );
+      return Right(result);
     } on ServerException {
+      return Left(ServerFailure());
+    } catch (_) {
       return Left(ServerFailure());
     }
   }
@@ -28,19 +34,24 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
   @override
   Future<Either<Failure, void>> saveMeasurement(Measurement measurement) async {
     try {
-      if (measurement is MeasurementModel) {
-        await mockDataSource.saveMeasurement(measurement);
-        return const Right(null);
-      }
-      return Left(ServerFailure());
+      await supabaseDataSource.saveMeasurement(measurement);
+      return const Right(null);
     } on ServerException {
+      return Left(ServerFailure());
+    } catch (_) {
       return Left(ServerFailure());
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteMeasurement(String id) async {
-    // TODO: Реализация
-    return const Right(null);
+    try {
+      await supabaseDataSource.deleteMeasurement(id);
+      return const Right(null);
+    } on ServerException {
+      return Left(ServerFailure());
+    } catch (_) {
+      return Left(ServerFailure());
+    }
   }
 }

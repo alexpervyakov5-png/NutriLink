@@ -7,11 +7,15 @@ import '../bloc/diary_event.dart';
 import '../bloc/diary_state.dart';
 import '../widgets/goals_section.dart';
 import '../widgets/meal_section.dart';
+import '../widgets/comment_bottom_sheet.dart';
+import 'add_food_screen.dart';
+import '../../domain/entities/meal_type.dart';
+import '../../domain/entities/daily_goals.dart';
 
 class DiaryScreen extends StatelessWidget {
   const DiaryScreen({super.key});
 
-  // ✅ Пути к изображениям
+  // Пути к изображениям
   static const _imageBreakfast = 'assets/images/breakfast.png';
   static const _imageLunch = 'assets/images/lunch.png';
   static const _imageDinner = 'assets/images/dinner.png';
@@ -23,9 +27,7 @@ class DiaryScreen extends StatelessWidget {
       color: AppColors.background,
       child: Column(
         children: [
-          // ✅ Компактный хедер с календарём
           _buildHeader(context),
-          // ✅ Цели (отдельный виджет)
           BlocBuilder<DiaryBloc, DiaryState>(
             builder: (context, state) {
               if (state.isLoading || state.goals == null) {
@@ -34,7 +36,6 @@ class DiaryScreen extends StatelessWidget {
               return GoalsSection(goals: state.goals!);
             },
           ),
-          // ✅ Список приёмов пищи
           Expanded(
             child: BlocBuilder<DiaryBloc, DiaryState>(
               builder: (context, state) {
@@ -55,6 +56,8 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.breakfast),
                       ),
+                      onCommentTap: () => _showCommentSheet(context, MealType.breakfast),
+                      onAddTap: () => _navigateToAddFood(context, MealType.breakfast),
                       items: state.meals[MealType.breakfast] ?? [],
                     ),
                     MealSection(
@@ -65,6 +68,8 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.lunch),
                       ),
+                      onCommentTap: () => _showCommentSheet(context, MealType.lunch),
+                      onAddTap: () => _navigateToAddFood(context, MealType.lunch),
                       items: state.meals[MealType.lunch] ?? [],
                     ),
                     MealSection(
@@ -75,6 +80,8 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.dinner),
                       ),
+                      onCommentTap: () => _showCommentSheet(context, MealType.dinner),
+                      onAddTap: () => _navigateToAddFood(context, MealType.dinner),
                       items: state.meals[MealType.dinner] ?? [],
                     ),
                     MealSection(
@@ -85,6 +92,8 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.snack),
                       ),
+                      onCommentTap: () => _showCommentSheet(context, MealType.snack),
+                      onAddTap: () => _navigateToAddFood(context, MealType.snack),
                       items: state.meals[MealType.snack] ?? [],
                     ),
                   ],
@@ -97,32 +106,21 @@ class DiaryScreen extends StatelessWidget {
     );
   }
 
-  // 📅 Компактный хедер с календарём
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: AppColors.backgroundSecondary,
-            width: 1,
-          ),
+          bottom: BorderSide(color: AppColors.backgroundSecondary, width: 1),
         ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'День',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
+          const Text('День', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           const Text(
             '31 января 2026 г',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
           ),
           GestureDetector(
             onTap: () async {
@@ -131,18 +129,23 @@ class DiaryScreen extends StatelessWidget {
                 initialDate: DateTime.now(),
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
-                builder: (context, child) => Theme(
-                  data: Theme.of(context).copyWith(
-                    colorScheme: ColorScheme.dark(
-                      primary: AppColors.accentLight,
-                      onPrimary: AppColors.background,
-                      surface: AppColors.backgroundSecondary,
-                      onSurface: AppColors.textPrimary,
+                builder: (context, child) {
+                  // ✅ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: именованные параметры data и child
+                  return Theme(
+                    data: Theme.of(context).copyWith(  // ✅ data: — именованный параметр
+                      colorScheme: ColorScheme.dark(
+                        primary: AppColors.accentLight,
+                        onPrimary: AppColors.background,
+                        surface: AppColors.backgroundSecondary,
+                        onSurface: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                  child: child!,
-                ),
+                    child: child!,  // ✅ child: — именованный параметр
+                  );
+                },
               );
+              // ✅ Проверка mounted после async gap
+              if (!context.mounted) return;
               if (date != null) {
                 context.read<DiaryBloc>().add(LoadDiaryData(date: date));
               }
@@ -153,14 +156,30 @@ class DiaryScreen extends StatelessWidget {
                 color: AppColors.backgroundSecondary,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(
-                Icons.calendar_today,
-                color: AppColors.textPrimary,
-                size: 18,
-              ),
+              child: const Icon(Icons.calendar_today, color: AppColors.textPrimary, size: 18),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ✅ Показать полустраницу с комментарием
+  void _showCommentSheet(BuildContext context, MealType mealType) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => CommentBottomSheet(mealType: mealType),
+    );
+  }
+
+  // ✅ Перейти на страницу добавления продуктов
+  void _navigateToAddFood(BuildContext context, MealType mealType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddFoodScreen(mealType: mealType),
       ),
     );
   }

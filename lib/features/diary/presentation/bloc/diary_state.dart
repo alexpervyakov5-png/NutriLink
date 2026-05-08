@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/meal.dart';
-
+import '../../domain/entities/meal_type.dart';
+import '../../domain/entities/daily_goals.dart';
 class DiaryState extends Equatable {
   final DailyGoals? goals;
   final Map<MealType, List<Meal>> meals;

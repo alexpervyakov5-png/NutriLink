@@ -4,17 +4,17 @@ import '../../../../core/utils/constants.dart';
 class ProfileDropdown<T> extends StatelessWidget {
   final String label;
   final T? value;
+  final String hint;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?>? onChanged;
-  final String hint;
 
   const ProfileDropdown({
     super.key,
     required this.label,
     this.value,
+    required this.hint,
     required this.items,
     this.onChanged,
-    this.hint = 'Выберите',
   });
 
   @override
@@ -22,7 +22,10 @@ class ProfileDropdown<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+        Text(
+          label,
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -33,13 +36,13 @@ class ProfileDropdown<T> extends StatelessWidget {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<T>(
               isExpanded: true,
-              value: value,
+              value: value, // ✅ null покажет hint
+              hint: Text(hint, style: const TextStyle(color: AppColors.textHint)),
               dropdownColor: AppColors.card,
               style: const TextStyle(color: AppColors.textPrimary),
               icon: const Icon(Icons.arrow_drop_down, color: AppColors.textHint),
               items: items,
               onChanged: onChanged,
-              hint: Text(hint, style: const TextStyle(color: AppColors.textHint)),
             ),
           ),
         ),

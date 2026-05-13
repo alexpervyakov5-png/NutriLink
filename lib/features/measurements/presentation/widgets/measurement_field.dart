@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/constants.dart';
 
 class MeasurementField extends StatelessWidget {
+  final TextEditingController controller;
   final String label;
-  final String? value;
   final String hint;
-  final ValueChanged<String>? onChanged;
-  final VoidCallback? onEdit;
+  final IconData icon;
+  final String? suffix;
+  final TextInputType? keyboardType;
 
   const MeasurementField({
     super.key,
+    required this.controller,
     required this.label,
-    this.value,
     required this.hint,
-    this.onChanged,
-    this.onEdit,
+    required this.icon,
+    this.suffix,
+    this.keyboardType,
   });
 
   @override
@@ -24,28 +26,54 @@ class MeasurementField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(8),
+          style: TextStyle(
+            color: AppColors.textHint,
+            fontSize: 12,
           ),
-          child: TextField(
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType ?? const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 15,
+            ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: AppColors.textHint),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.edit, color: AppColors.textHint, size: 20),
-                onPressed: onEdit,
+              hintStyle: TextStyle(
+                color: AppColors.textHint.withOpacity(0.4),
+                fontSize: 15,
+              ),
+              prefixIcon: Icon(
+                icon,
+                color: AppColors.textHint,
+                size: 18,
+              ),
+              suffixText: suffix,
+              suffixStyle: TextStyle(
+                color: AppColors.textHint,
+                fontSize: 12,
               ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 12,
+              ),
             ),
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-            onChanged: onChanged,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                if (double.tryParse(value) == null) {
+                  return 'Введите число';
+                }
+              }
+              return null;
+            },
           ),
         ),
       ],

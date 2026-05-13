@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/foundation.dart'; // ✅ Для debugPrint
-// ✅ ИСПРАВЛЕНИЕ: скрываем конфликтующий AuthState, но оставляем остальные классы
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 // ✅ Core
@@ -18,7 +16,7 @@ import 'features/auth/data/datasources/auth_supabase_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
-import 'features/auth/presentation/bloc/auth_state.dart'; // ✅ Ваш AuthState
+import 'features/auth/presentation/bloc/auth_state.dart';
 import 'features/auth/presentation/pages/login_screen.dart';
 
 // ✅ Profile
@@ -42,7 +40,6 @@ import 'features/measurements/data/datasources/measurements_supabase_datasource.
 import 'features/measurements/data/repositories/measurements_repository_impl.dart';
 import 'features/measurements/domain/usecases/get_measurements.dart';
 import 'features/measurements/domain/usecases/save_measurement.dart';
-import 'features/measurements/domain/entities/measurement.dart';
 import 'features/measurements/presentation/bloc/measurements_bloc.dart';
 import 'features/measurements/presentation/bloc/measurements_event.dart';
 import 'features/measurements/presentation/pages/measurements_screen.dart';
@@ -58,15 +55,21 @@ import 'features/stats/presentation/pages/stats_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 🔍 Тест подключения к Supabase
   try {
+    // ✅ Инициализация Supabase
     await SupabaseConfig.initialize();
+    
+    // ✅ Тест подключения
     final test = await SupabaseConfig.client
         .from('products')
         .select('id')
         .limit(1);
-    // ✅ Используем debugPrint из flutter/foundation.dart
     debugPrint('✅ Supabase подключён! Продуктов в БД: ${test.isNotEmpty ? 'есть' : 'нет'}');
+    
+    // ✅ Проверка авторизации
+    final userId = SupabaseConfig.currentUserId;
+    debugPrint('🔍 currentUserId: ${userId ?? "NULL (не авторизован)"}');
+    
   } catch (e) {
     debugPrint('❌ Ошибка подключения к Supabase: $e');
   }
@@ -81,23 +84,23 @@ class NutriLinkApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final supabaseClient = SupabaseConfig.client;
 
-    // 🔌 Auth Data Source & Repository
+    // 🔌 Auth
     final authDs = AuthSupabaseDataSourceImpl(client: supabaseClient);
     final authRepo = AuthRepositoryImpl(dataSource: authDs);
 
-    // 🔌 Profile Data Source & Repository
+    // 🔌 Profile
     final profileDs = ProfileSupabaseDataSourceImpl(client: supabaseClient);
     final profileRepo = ProfileRepositoryImpl(supabaseDataSource: profileDs);
 
-    // 🔌 Diary Data Source & Repository
+    // 🔌 Diary
     final diaryDs = DiarySupabaseDataSourceImpl(client: supabaseClient);
     final diaryRepo = DiaryRepositoryImpl(dataSource: diaryDs);
 
-    // 🔌 Measurements Data Source & Repository
+    // 🔌 Measurements
     final measurementsDs = MeasurementsSupabaseDataSourceImpl(client: supabaseClient);
-    final measurementsRepo = MeasurementsRepositoryImpl(supabaseDataSource: measurementsDs);
+    final measurementsRepo = MeasurementsRepositoryImpl(dataSource: measurementsDs);
 
-    // 🔌 Stats (пока mock)
+    // 🔌 Stats
     final statsDs = StatsMockDataSourceImpl();
     final statsRepo = StatsRepositoryImpl(mockDataSource: statsDs);
 
@@ -124,19 +127,19 @@ class NutriLinkApp extends StatelessWidget {
           create: (_) => DiaryBloc(repository: diaryRepo)..add(LoadDiaryData(date: DateTime.now())),
         ),
         
-        // 📏 Measurements
+        // 📏 Measurements — ✅ Без периода, просто загрузка
         BlocProvider(
           create: (_) => MeasurementsBloc(
             getMeasurements: GetMeasurements(measurementsRepo),
             saveMeasurement: SaveMeasurement(measurementsRepo),
-          )..add(LoadMeasurements(period: MeasurementPeriod.day)),
+          )..add(LoadMeasurements()),
         ),
         
-        // 📊 Stats
+        // 📊 Stats — ✅ Без периода, просто загрузка
         BlocProvider(
           create: (_) => StatsBloc(
             getNutritionStats: GetNutritionStats(statsRepo),
-          )..add(LoadStats(period: MeasurementPeriod.day)),
+          )..add(LoadStats()),
         ),
       ],
       child: MaterialApp(
@@ -159,8 +162,9 @@ class NutriLinkApp extends StatelessWidget {
         ),
         
         // 🔐 Auth Wrapper
-        home: BlocBuilder<AuthBloc, AuthState>( // ✅ Теперь использует ваш AuthState
+        home: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
+            // Загрузка — показываем сплэш
             if (state is AuthInitial || state is AuthLoading) {
               return const Scaffold(
                 backgroundColor: AppColors.background,
@@ -184,14 +188,17 @@ class NutriLinkApp extends StatelessWidget {
               );
             }
             
+            // Авторизован — главное приложение
             if (state is AuthAuthenticated) {
               return const MainScreen();
             }
             
+            // Не авторизован — экран входа
             if (state is AuthUnauthenticated || state is AuthError) {
               return const LoginScreen();
             }
             
+            // Fallback
             return const LoginScreen();
           },
         ),
@@ -208,6 +215,8 @@ class MainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
+      
+      // AppBar с лого и меню
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -239,6 +248,8 @@ class MainScreen extends StatelessWidget {
           ),
         ],
       ),
+      
+      // Тело с анимацией переключения экранов
       body: BlocBuilder<NavigationBloc, NavigationState>(
         builder: (context, state) {
           return AnimatedSwitcher(
@@ -257,6 +268,8 @@ class MainScreen extends StatelessWidget {
           );
         },
       ),
+      
+      // Нижняя навигация
       bottomNavigationBar: const _BottomNavigation(),
     );
   }
@@ -291,6 +304,8 @@ class MainScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          
+          // Профиль
           ListTile(
             leading: const Icon(Icons.person, color: AppColors.textPrimary),
             title: const Text('Профиль', style: TextStyle(color: AppColors.textPrimary)),
@@ -299,6 +314,8 @@ class MainScreen extends StatelessWidget {
               context.read<NavigationBloc>().add(TabTapped(0));
             },
           ),
+          
+          // Настройки
           ListTile(
             leading: const Icon(Icons.settings, color: AppColors.textPrimary),
             title: const Text('Настройки', style: TextStyle(color: AppColors.textPrimary)),
@@ -307,6 +324,8 @@ class MainScreen extends StatelessWidget {
               // TODO: Открыть настройки
             },
           ),
+          
+          // 🔐 Выйти
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Выйти', style: TextStyle(color: Colors.red)),
@@ -315,6 +334,7 @@ class MainScreen extends StatelessWidget {
               context.read<AuthBloc>().add(AuthSignOutRequested());
             },
           ),
+          
           const SizedBox(height: 16),
         ],
       ),

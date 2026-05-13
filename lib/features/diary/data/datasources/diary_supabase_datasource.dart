@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/error/exceptions.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/config/supabase_config.dart';
+import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/meal.dart';
 import '../../domain/entities/meal_type.dart';
 import '../../domain/entities/daily_goals.dart';
@@ -8,15 +10,14 @@ import '../../domain/entities/daily_goals.dart';
 abstract class DiarySupabaseDataSource {
   Future<DailyGoals> getDailyGoals(DateTime date);
   Future<List<Meal>> getMealsByType(MealType type, DateTime date);
-  
-  // ✅ Методы для сохранения
-  Future<void> addMeal(Meal meal);
-  Future<void> updateMeal(Meal meal);
-  Future<void> deleteMeal(String mealId);
+  Future<void> addMealItem(Meal meal, String? productId);
+  Future<void> updateMealItem(Meal meal);
+  Future<void> deleteMealItem(String mealId);
 }
 
 class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
   final SupabaseClient client;
+  final Uuid _uuid = const Uuid();
 
   DiarySupabaseDataSourceImpl({required this.client});
 
@@ -60,7 +61,22 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
 
     final mealsResponse = await client
         .from('meals')
-        .select()
+        .select('''
+          id,
+          meal_type,
+          eaten_at,
+          comment,
+          meal_items (
+            id,
+            amount_grams,
+            product_id,
+            product_name,
+            calories,
+            protein,
+            fat,
+            carbs
+          )
+        ''')
         .eq('user_id', userId)
         .eq('meal_type', _mapMealType(type))
         .order('eaten_at', ascending: false);
@@ -70,16 +86,41 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
 
     for (final json in meals) {
       final eatenAt = DateTime.parse(json['eaten_at'] as String);
-      if (!_isSameDay(eatenAt, date)) continue;
+      if (eatenAt.year != date.year || 
+          eatenAt.month != date.month || 
+          eatenAt.day != date.day) {
+        continue;
+      }
+
+      final items = json['meal_items'] as List? ?? [];
+      
+      int totalWeight = 0;
+      int totalCalories = 0;
+      int totalProtein = 0;
+      int totalFats = 0;
+      int totalCarbs = 0;
+      String? firstName;
+
+      for (final item in items) {
+        final amount = _toInt(item['amount_grams']) ?? 0;
+        totalWeight += amount;
+
+        totalCalories += _toInt(item['calories']) ?? 0;
+        totalProtein += _toInt(item['protein']) ?? 0;
+        totalFats += _toInt(item['fat']) ?? 0;
+        totalCarbs += _toInt(item['carbs']) ?? 0;
+
+        firstName ??= item['product_name'] as String?;
+      }
 
       result.add(Meal(
         id: json['id'] as String,
-        name: json['name'] as String,
-        weight: '${json['weight']}г',
-        calories: _toInt(json['calories']) ?? 0,
-        protein: _toInt(json['protein']) ?? 0,
-        fats: _toInt(json['fats']) ?? 0,
-        carbs: _toInt(json['carbs']) ?? 0,
+        name: firstName ?? 'Блюдо',
+        weight: '${totalWeight}г',
+        calories: totalCalories,
+        protein: totalProtein,
+        fats: totalFats,
+        carbs: totalCarbs,
         mealType: type,
         createdAt: eatenAt,
         comment: json['comment'] as String?,
@@ -89,53 +130,97 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
     return result;
   }
 
-  // ✅ ДОБАВЛЕНИЕ блюда в Supabase
   @override
-  Future<void> addMeal(Meal meal) async {
+  Future<void> addMealItem(Meal meal, String? productId) async {
+    debugPrint('🔍 DataSource: addMealItem');
+    debugPrint('  product: ${meal.name}');
+    debugPrint('  weight: ${meal.weight}');
+    
     final userId = SupabaseConfig.currentUserId;
     if (userId == null) throw ServerException('Пользователь не авторизован');
 
-    await client.from('meals').insert({
-      'id': meal.id,
-      'user_id': userId,
-      'meal_type': _mapMealType(meal.mealType),
-      'eaten_at': meal.createdAt.toIso8601String(),
-      'name': meal.name,
-      'weight': _parseWeight(meal.weight),
-      'calories': meal.calories,
-      'protein': meal.protein,
-      'fats': meal.fats,
-      'carbs': meal.carbs,
-      'comment': meal.comment,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    final dateStr = meal.createdAt.toIso8601String().split('T')[0];
+    final mealTypeStr = _mapMealType(meal.mealType);
+    final itemId = _uuid.v4();
+
+    try {
+      // ✅ 1. Ищем существующий приём пищи за сегодня этого типа
+      debugPrint('🔍 Ищем существующий meal...');
+      final existingMeal = await client
+          .from('meals')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('date', dateStr)
+          .eq('meal_type', mealTypeStr)
+          .maybeSingle();
+
+      String mealId;
+
+      if (existingMeal == null) {
+        // ✅ 2. Создаём новый, если не найден
+        debugPrint('📤 Создаём новую запись в meals...');
+        mealId = _uuid.v4();
+        await client.from('meals').insert({
+          'id': mealId,
+          'user_id': userId,
+          'meal_type': mealTypeStr,
+          'date': dateStr,
+          'eaten_at': meal.createdAt.toIso8601String(),
+          'created_at': DateTime.now().toIso8601String(),
+          if (meal.comment != null && meal.comment!.isNotEmpty) 'comment': meal.comment,
+        });
+        debugPrint('✅ Создан новый meal, id: $mealId');
+      } else {
+        // ✅ 3. Используем существующий
+        mealId = existingMeal['id'] as String;
+        debugPrint('✅ Найдён существующий meal, id: $mealId');
+      }
+
+      // ✅ 4. Вставляем продукт в этот приём пищи
+      debugPrint('📤 Вставляем в meal_items...');
+      await client.from('meal_items').insert({
+        'id': itemId,
+        'meal_id': mealId,
+        'product_id': productId,
+        'product_name': meal.name,
+        'amount_grams': _parseWeight(meal.weight),
+        'calories': meal.calories,
+        'protein': meal.protein,
+        'fat': meal.fats,
+        'carbs': meal.carbs,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint('✅ DataSource: addMealItem успешно завершён');
+      
+    } catch (e, stack) {
+      debugPrint('❌ DataSource: addMealItem ошибка: $e');
+      debugPrint('📋 Stack trace: $stack');
+      rethrow;
+    }
   }
 
-  // ✅ ОБНОВЛЕНИЕ блюда в Supabase
   @override
-  Future<void> updateMeal(Meal meal) async {
-    final userId = SupabaseConfig.currentUserId;
-    if (userId == null) throw ServerException('Пользователь не авторизован');
-
-    await client.from('meals').update({
-      'name': meal.name,
-      'weight': _parseWeight(meal.weight),
-      'calories': meal.calories,
-      'protein': meal.protein,
-      'fats': meal.fats,
-      'carbs': meal.carbs,
-      'comment': meal.comment,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', meal.id).eq('user_id', userId);
+  Future<void> updateMealItem(Meal meal) async {
+    debugPrint('⚠️ DataSource: updateMealItem (пока не реализован)');
   }
 
-  // ✅ УДАЛЕНИЕ блюда из Supabase
   @override
-  Future<void> deleteMeal(String mealId) async {
+  Future<void> deleteMealItem(String mealId) async {
+    debugPrint('🔍 DataSource: deleteMealItem id=$mealId');
+    
     final userId = SupabaseConfig.currentUserId;
     if (userId == null) throw ServerException('Пользователь не авторизован');
 
-    await client.from('meals').delete().eq('id', mealId).eq('user_id', userId);
+    try {
+      await client.from('meal_items').delete().eq('meal_id', mealId);
+      await client.from('meals').delete().eq('id', mealId).eq('user_id', userId);
+      debugPrint('✅ DataSource: meal и items удалены');
+    } catch (e, stack) {
+      debugPrint('❌ DataSource: deleteMealItem ошибка: $e');
+      debugPrint('📋 Stack: $stack');
+      rethrow;
+    }
   }
 
   String _mapMealType(MealType type) {
@@ -149,10 +234,6 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
 
   int _parseWeight(String weightStr) {
     return int.tryParse(weightStr.replaceAll('г', '').trim()) ?? 0;
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   int? _toInt(dynamic value) {

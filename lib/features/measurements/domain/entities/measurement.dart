@@ -1,37 +1,47 @@
-enum MeasurementPeriod { day, month, year, custom }
+import 'package:equatable/equatable.dart';
 
-class Measurement {
+class Measurement extends Equatable {
   final String id;
-  final DateTime date;
-  final double? chestCm;
-  final double? waistCm;
-  final double? hipsCm;
-  final double? weightKg;
+  final String userId;
+  final DateTime measuredAt;
+  final double? chestCm;      // ✅ Грудь
+  final double? waistCm;      // ✅ Талия
+  final double? hipsCm;       // ✅ Бёдра
 
-  Measurement({
+  const Measurement({
     required this.id,
-    required this.date,
+    required this.userId,
+    required this.measuredAt,
     this.chestCm,
     this.waistCm,
     this.hipsCm,
-    this.weightKg,
   });
 
   Measurement copyWith({
     String? id,
-    DateTime? date,
+    String? userId,
+    DateTime? measuredAt,
     double? chestCm,
     double? waistCm,
     double? hipsCm,
-    double? weightKg,
   }) {
     return Measurement(
       id: id ?? this.id,
-      date: date ?? this.date,
+      userId: userId ?? this.userId,
+      measuredAt: measuredAt ?? this.measuredAt,
       chestCm: chestCm ?? this.chestCm,
       waistCm: waistCm ?? this.waistCm,
       hipsCm: hipsCm ?? this.hipsCm,
-      weightKg: weightKg ?? this.weightKg,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        id,
+        userId,
+        measuredAt,
+        chestCm,
+        waistCm,
+        hipsCm,
+      ];
 }

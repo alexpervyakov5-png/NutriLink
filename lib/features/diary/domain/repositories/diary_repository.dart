@@ -8,8 +8,8 @@ abstract class DiaryRepository {
   Future<Either<Failure, DailyGoals>> getDailyGoals(DateTime date);
   Future<Either<Failure, List<Meal>>> getMealsByType(MealType type, DateTime date);
   
-  // ✅ Методы сохранения
-  Future<Either<Failure, void>> addMeal(Meal meal);
-  Future<Either<Failure, void>> updateMeal(Meal meal);
-  Future<Either<Failure, void>> deleteMeal(String mealId);
+  // ✅ Обновлено: добавлен параметр productId
+  Future<Either<Failure, void>> addMealItem(Meal meal, String? productId);
+  Future<Either<Failure, void>> updateMealItem(Meal meal);
+  Future<Either<Failure, void>> deleteMealItem(String mealId);
 }

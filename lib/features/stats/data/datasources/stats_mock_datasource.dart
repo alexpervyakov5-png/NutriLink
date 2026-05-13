@@ -1,29 +1,30 @@
+import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/stats.dart';
 
 abstract class StatsMockDataSource {
-  Future<NutritionStats> getNutritionStats(
+  Future<NutritionStats> getNutritionStats({
     DateTime? startDate,
     DateTime? endDate,
-  );
+  });
 }
 
 class StatsMockDataSourceImpl implements StatsMockDataSource {
   @override
-  Future<NutritionStats> getNutritionStats(
+  Future<NutritionStats> getNutritionStats({
     DateTime? startDate,
     DateTime? endDate,
-  ) async {
+  }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-
-    // Mock данные
+    
+    // ✅ Возвращаем моковые данные
     return const NutritionStats(
-      protein: 333,
-      fats: 333,
-      carbs: 333,
-      calories: 1000,
-      proteinPercent: 33.3,
-      fatsPercent: 33.3,
-      carbsPercent: 33.3,
+      protein: 85,
+      fats: 45,
+      carbs: 200,
+      calories: 1800,
+      proteinPercent: 19.0,
+      fatsPercent: 23.0,
+      carbsPercent: 58.0,
     );
   }
 }

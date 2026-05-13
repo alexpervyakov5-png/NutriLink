@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/constants.dart';
-import '../../../measurements/domain/entities/measurement.dart';
 import '../../domain/entities/stats.dart';
 import '../bloc/stats_bloc.dart';
 import '../bloc/stats_event.dart';
 import '../bloc/stats_state.dart';
-import '../widgets/period_selector.dart';
 import '../widgets/stats_row.dart';
 import '../widgets/pie_chart_widget.dart';
 import '../widgets/chart_legend.dart';
@@ -15,7 +13,6 @@ import 'graphs_screen.dart';
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
-  // ✅ Пути к изображениям (константы)
   static const _imageProtein = '${AppStrings.assetImages}protein.png';
   static const _imageFats = '${AppStrings.assetImages}fats.png';
   static const _imageCarbs = '${AppStrings.assetImages}carbs.png';
@@ -35,8 +32,7 @@ class StatsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ✅ Передаём state в метод
-                _buildHeaderRow(context, state),
+                _buildHeaderRow(context),
                 const SizedBox(height: 24),
                 if (state.stats != null) _buildStatsCard(state.stats!),
                 const SizedBox(height: 24),
@@ -49,24 +45,11 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  // Добавили параметр state
-  Widget _buildHeaderRow(BuildContext context, StatsState state) {
+  Widget _buildHeaderRow(BuildContext context) {
     return Row(
       children: [
-        // Выбор периода (компактный)
-        Expanded(
-          flex: 2,
-          child: StatsPeriodSelector(
-            selectedPeriod: state.selectedPeriod,
-            onChanged: (period) {
-              context.read<StatsBloc>().add(StatsSelectPeriod(period));
-            },
-          ),
-        ),
-        const SizedBox(width: 12),
         // 📈 Кнопка "Графики"
         Expanded(
-          flex: 3,
           child: ElevatedButton.icon(
             onPressed: () {
               Navigator.push(
@@ -117,7 +100,6 @@ class StatsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          // ✅ Белки с изображением
           StatsRow(
             label: 'Белки',
             value: '${stats.protein} gr',
@@ -125,7 +107,6 @@ class StatsScreen extends StatelessWidget {
             color: Colors.green,
             imagePath: _imageProtein,
           ),
-          // ✅ Жиры с изображением
           StatsRow(
             label: 'Жиры',
             value: '${stats.fats} gr',
@@ -133,7 +114,6 @@ class StatsScreen extends StatelessWidget {
             color: Colors.red,
             imagePath: _imageFats,
           ),
-          // ✅ Углеводы с изображением
           StatsRow(
             label: 'Углеводы',
             value: '${stats.carbs} gr',
@@ -142,7 +122,6 @@ class StatsScreen extends StatelessWidget {
             imagePath: _imageCarbs,
           ),
           const Divider(color: AppColors.background, height: 24),
-          // ✅ Калории с изображением
           StatsRow(
             label: 'Калории',
             value: '${stats.calories}',

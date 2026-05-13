@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/meal.dart';
@@ -36,11 +37,30 @@ class DiaryRepositoryImpl implements DiaryRepository {
     }
   }
 
-  // ✅ Реализация сохранения
   @override
-  Future<Either<Failure, void>> addMeal(Meal meal) async {
+  Future<Either<Failure, void>> addMealItem(Meal meal, String? productId) async {
+    debugPrint('🔍 Repository: addMealItem');
+    debugPrint('  mealId: ${meal.id}');
+    debugPrint('  productId: $productId');
+    
     try {
-      await dataSource.addMeal(meal);
+      await dataSource.addMealItem(meal, productId);
+      debugPrint('✅ Repository: addMealItem успешно');
+      return const Right(null);
+    } on ServerException catch (e) {
+      debugPrint('❌ Repository: addMealItem ServerException: $e');
+      return Left(ServerFailure());
+    } catch (e, stack) {
+      debugPrint('❌ Repository: addMealItem ошибка: $e');
+      debugPrint('📋 Stack: $stack');
+      return Left(ServerFailure());
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateMealItem(Meal meal) async {
+    try {
+      await dataSource.updateMealItem(meal);
       return const Right(null);
     } on ServerException {
       return Left(ServerFailure());
@@ -50,21 +70,9 @@ class DiaryRepositoryImpl implements DiaryRepository {
   }
 
   @override
-  Future<Either<Failure, void>> updateMeal(Meal meal) async {
+  Future<Either<Failure, void>> deleteMealItem(String mealId) async {
     try {
-      await dataSource.updateMeal(meal);
-      return const Right(null);
-    } on ServerException {
-      return Left(ServerFailure());
-    } catch (_) {
-      return Left(ServerFailure());
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> deleteMeal(String mealId) async {
-    try {
-      await dataSource.deleteMeal(mealId);
+      await dataSource.deleteMealItem(mealId);
       return const Right(null);
     } on ServerException {
       return Left(ServerFailure());

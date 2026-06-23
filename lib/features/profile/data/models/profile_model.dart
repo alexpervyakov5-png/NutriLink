@@ -8,20 +8,18 @@ class ProfileModel extends Profile {
     super.birthDate,
     super.heightCm,
     super.gender,
-    super.weightKg,
     required super.goal,
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
       id: json['id'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
       birthDate: json['birth_date'] != null ? DateTime.parse(json['birth_date']) : null,
-      heightCm: json['height_cm'],
+      heightCm: json['height_cm']?.toInt(),
       gender: json['gender'],
-      weightKg: json['weight_kg']?.toDouble(),
-      goal: GoalType.values.firstWhere((e) => e.toString() == 'GoalType.${json['goal']}'),
+      goal: _parseGoal(json['goal']),
     );
   }
 
@@ -33,8 +31,19 @@ class ProfileModel extends Profile {
       'birth_date': birthDate?.toIso8601String(),
       'height_cm': heightCm,
       'gender': gender,
-      'weight_kg': weightKg,
       'goal': goal.toString().split('.').last,
     };
+  }
+
+  static GoalType _parseGoal(String? goalStr) {
+    if (goalStr == null) return GoalType.maintenance;
+    try {
+      return GoalType.values.firstWhere(
+        (e) => e.toString().split('.').last == goalStr,
+        orElse: () => GoalType.maintenance,
+      );
+    } catch (_) {
+      return GoalType.maintenance;
+    }
   }
 }

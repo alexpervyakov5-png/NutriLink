@@ -132,9 +132,8 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
 
   @override
   Future<void> addMealItem(Meal meal, String? productId) async {
-    debugPrint('🔍 DataSource: addMealItem');
-    debugPrint('  product: ${meal.name}');
-    debugPrint('  weight: ${meal.weight}');
+    debugPrint('🔍 DataSource: addMealItem START');
+    debugPrint('  meal.comment: "${meal.comment}"');
     
     final userId = SupabaseConfig.currentUserId;
     if (userId == null) throw ServerException('Пользователь не авторизован');
@@ -144,11 +143,9 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
     final itemId = _uuid.v4();
 
     try {
-      // ✅ 1. Ищем существующий приём пищи за сегодня этого типа
-      debugPrint('🔍 Ищем существующий meal...');
       final existingMeal = await client
           .from('meals')
-          .select('id')
+          .select('id, comment')
           .eq('user_id', userId)
           .eq('date', dateStr)
           .eq('meal_type', mealTypeStr)
@@ -157,26 +154,40 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
       String mealId;
 
       if (existingMeal == null) {
-        // ✅ 2. Создаём новый, если не найден
-        debugPrint('📤 Создаём новую запись в meals...');
+        debugPrint('📤 Создаём НОВЫЙ meal');
         mealId = _uuid.v4();
-        await client.from('meals').insert({
+        
+        final mealData = <String, dynamic>{
           'id': mealId,
           'user_id': userId,
           'meal_type': mealTypeStr,
           'date': dateStr,
           'eaten_at': meal.createdAt.toIso8601String(),
           'created_at': DateTime.now().toIso8601String(),
-          if (meal.comment != null && meal.comment!.isNotEmpty) 'comment': meal.comment,
-        });
-        debugPrint('✅ Создан новый meal, id: $mealId');
+        };
+
+        if (meal.comment != null && meal.comment!.isNotEmpty) {
+          mealData['comment'] = meal.comment;
+          debugPrint('💬 Добавлен комментарий в INSERT: "${meal.comment}"');
+        }
+
+        await client.from('meals').insert(mealData);
+        debugPrint('✅ Meal создан');
       } else {
-        // ✅ 3. Используем существующий
         mealId = existingMeal['id'] as String;
-        debugPrint('✅ Найдён существующий meal, id: $mealId');
+        debugPrint('✅ Найден СУЩЕСТВУЮЩИЙ meal: $mealId');
+        
+        if (meal.comment != null && meal.comment!.isNotEmpty) {
+          final existingComment = existingMeal['comment'] as String?;
+          if (existingComment != meal.comment) {
+            debugPrint('🔄 Обновляем комментарий: "${meal.comment}"');
+            await client.from('meals').update({
+              'comment': meal.comment,
+            }).eq('id', mealId);
+          }
+        }
       }
 
-      // ✅ 4. Вставляем продукт в этот приём пищи
       debugPrint('📤 Вставляем в meal_items...');
       await client.from('meal_items').insert({
         'id': itemId,
@@ -191,18 +202,43 @@ class DiarySupabaseDataSourceImpl implements DiarySupabaseDataSource {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      debugPrint('✅ DataSource: addMealItem успешно завершён');
+      debugPrint('✅ DataSource: addMealItem УСПЕШНО');
       
     } catch (e, stack) {
-      debugPrint('❌ DataSource: addMealItem ошибка: $e');
-      debugPrint('📋 Stack trace: $stack');
+      debugPrint('❌ DataSource: addMealItem ОШИБКА: $e');
+      debugPrint('📋 Stack: $stack');
       rethrow;
     }
   }
 
   @override
   Future<void> updateMealItem(Meal meal) async {
-    debugPrint('⚠️ DataSource: updateMealItem (пока не реализован)');
+    debugPrint('🔍 DataSource: updateMealItem START');
+    debugPrint('  meal.id: ${meal.id}');
+    debugPrint('  meal.comment: "${meal.comment}"');
+    
+    try {
+      final updateData = <String, dynamic>{};
+      
+      if (meal.comment != null) {
+        updateData['comment'] = meal.comment;
+        debugPrint('💬 Обновляем комментарий: "${meal.comment}"');
+      }
+
+      // Если данных для обновления нет, выходим, чтобы не вызывать пустой запрос к БД
+      if (updateData.isEmpty) {
+        debugPrint('⚠️ Нет полей для обновления, пропускаем запрос');
+        return;
+      }
+      
+      await client.from('meals').update(updateData).eq('id', meal.id);
+      debugPrint('✅ DataSource: updateMealItem успешно');
+      
+    } catch (e, stack) {
+      debugPrint('❌ DataSource: updateMealItem ошибка: $e');
+      debugPrint(' Stack: $stack');
+      rethrow;
+    }
   }
 
   @override

@@ -7,34 +7,30 @@ abstract class DiaryEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Загрузить данные дневника за дату
 class LoadDiaryData extends DiaryEvent {
   final DateTime date;
   LoadDiaryData({required this.date});
-  
   @override
   List<Object?> get props => [date];
 }
 
-/// Переключить видимость раздела приёма пищи
 class ToggleMealSection extends DiaryEvent {
   final MealType mealType;
   ToggleMealSection({required this.mealType});
-  
   @override
   List<Object?> get props => [mealType];
 }
 
-/// ✅ НОВОЕ: Добавить продукт в приём пищи
 class AddMealItem extends DiaryEvent {
   final MealType mealType;
   final String productId;
   final String productName;
-  final String weight;          // ✅ String как в Meal
+  final String weight;
   final int calories;
-  final int protein;            // ✅ int как в Meal (округляем в BLoC)
+  final int protein;
   final int fats;
   final int carbs;
+  final String? comment;
 
   AddMealItem({
     required this.mealType,
@@ -45,22 +41,16 @@ class AddMealItem extends DiaryEvent {
     required this.protein,
     required this.fats,
     required this.carbs,
+    this.comment,
   });
 
   @override
   List<Object?> get props => [
-        mealType,
-        productId,
-        productName,
-        weight,
-        calories,
-        protein,
-        fats,
-        carbs,
+        mealType, productId, productName, weight,
+        calories, protein, fats, carbs, comment
       ];
 }
 
-/// ✅ НОВОЕ: Обновить существующий продукт в приёме пищи
 class UpdateMealItem extends DiaryEvent {
   final String mealId;
   final MealType mealType;
@@ -69,6 +59,7 @@ class UpdateMealItem extends DiaryEvent {
   final int protein;
   final int fats;
   final int carbs;
+  final String? comment; // ✅ Добавлено
 
   UpdateMealItem({
     required this.mealId,
@@ -78,21 +69,13 @@ class UpdateMealItem extends DiaryEvent {
     required this.protein,
     required this.fats,
     required this.carbs,
+    this.comment,
   });
 
   @override
-  List<Object?> get props => [
-        mealId,
-        mealType,
-        weight,
-        calories,
-        protein,
-        fats,
-        carbs,
-      ];
+  List<Object?> get props => [mealId, mealType, weight, calories, protein, fats, carbs, comment];
 }
 
-/// ✅ НОВОЕ: Удалить продукт из приёма пищи
 class RemoveMealItem extends DiaryEvent {
   final String mealId;
   final MealType mealType;
@@ -106,16 +89,17 @@ class RemoveMealItem extends DiaryEvent {
   List<Object?> get props => [mealId, mealType];
 }
 
-/// ✅ НОВОЕ: Добавить комментарий к приёму пищи
 class AddComment extends DiaryEvent {
   final MealType mealType;
-  final String text;
+  final String? mealId; // ✅ ID блюда (если есть)
+  final String? text;   // ✅ Текст комментария (null = удалить)
 
   AddComment({
     required this.mealType,
+    this.mealId,
     required this.text,
   });
 
   @override
-  List<Object?> get props => [mealType, text];
+  List<Object?> get props => [mealType, mealId, text];
 }

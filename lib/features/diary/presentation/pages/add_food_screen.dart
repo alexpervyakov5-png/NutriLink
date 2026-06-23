@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../domain/entities/meal_type.dart';
@@ -21,6 +20,13 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
   final _searchController = TextEditingController();
   List<_SearchItem> _searchResults = [];
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Загружаем список продуктов сразу при открытии экрана
+    _searchInSupabase('');
+  }
 
   @override
   void dispose() {
@@ -67,17 +73,14 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
                         border: InputBorder.none,
                       ),
                       onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          _searchInSupabase(value);
-                        } else {
-                          setState(() => _searchResults = []);
-                        }
+                        // ✅ Всегда вызываем поиск, даже при пустой строке
+                        _searchInSupabase(value.trim());
                       },
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                // ✅ Кнопка ручного добавления (создаст продукт в БД)
+                // ✅ Кнопка ручного добавления
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.accent,
@@ -103,8 +106,15 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _searchResults.isEmpty && _searchController.text.isNotEmpty
-                    ? const Center(child: Text('Ничего не найдено', style: TextStyle(color: AppColors.textHint)))
+                : _searchResults.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchController.text.isEmpty
+                              ? 'Список продуктов пуст'
+                              : 'Ничего не найдено',
+                          style: const TextStyle(color: AppColors.textHint),
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _searchResults.length,
@@ -166,31 +176,43 @@ class _AddFoodScreenState extends State<AddFoodScreen> {
     );
   }
 
-  // ✅ ПОИСК В SUPABASE (Общие + Свои)
+  // ✅ ПОИСК В SUPABASE (Общие + Свои) — БЕЗ ilike, фильтрация в Dart
   Future<void> _searchInSupabase(String query) async {
     setState(() => _isLoading = true);
     
     try {
       final userId = SupabaseConfig.client.auth.currentUser?.id;
+      
+      // ✅ Базовый запрос: только фильтр по пользователю и лимит
+      // Фильтр по имени делаем в коде Dart — надёжнее и без ошибок типов
       final response = await SupabaseConfig.client
           .from('products')
           .select()
-          // Фильтр: (user_id пустой ИЛИ user_id совпадает с моим) И название похоже на запрос
+          // Фильтр: (user_id пустой ИЛИ user_id совпадает с моим)
           .or('user_id.is.null,user_id.eq.$userId')
-          .ilike('name', '%$query%')
-          .limit(10);
+          .limit(100); // ✅ Увеличили лимит для лучшего покрытия
 
       final List<dynamic> data = response as List<dynamic>;
+      
+      // ✅ Фильтрация по названию в коде Dart (регистронезависимая)
+      final List<_SearchItem> allProducts = data.map((json) => _SearchItem(
+        id: json['id'] ?? '',
+        name: json['name'] as String,
+        calories: (json['calories'] ?? 0).toDouble(),
+        protein: (json['protein'] ?? 0).toDouble(),
+        fats: (json['fat'] ?? 0).toDouble(),
+        carbs: (json['carbs'] ?? 0).toDouble(),
+        weight: 100,
+      )).toList();
+
+      final filteredProducts = query.isEmpty
+          ? allProducts
+          : allProducts.where((p) => 
+              p.name.toLowerCase().contains(query.toLowerCase())
+            ).toList();
+
       setState(() {
-        _searchResults = data.map((json) => _SearchItem(
-          id: json['id'] ?? '',
-          name: json['name'] as String,
-          calories: (json['calories'] ?? 0).toDouble(),
-          protein: (json['protein'] ?? 0).toDouble(),
-          fats: (json['fat'] ?? 0).toDouble(), // В БД часто fat, а не fats
-          carbs: (json['carbs'] ?? 0).toDouble(),
-          weight: 100,
-        )).toList();
+        _searchResults = filteredProducts;
         _isLoading = false;
       });
     } catch (e) {

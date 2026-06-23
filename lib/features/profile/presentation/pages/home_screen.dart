@@ -125,9 +125,8 @@ class HomeScreen extends StatelessWidget {
                   firstDate: DateTime(1900),
                   lastDate: DateTime.now(),
                   builder: (context, child) {
-                    // ✅ ИСПРАВЛЕНО: именованные параметры data и child
                     return Theme(
-                      data: Theme.of(context).copyWith(  // ✅ data: — именованный
+                      data: Theme.of(context).copyWith(
                         colorScheme: ColorScheme.dark(
                           primary: AppColors.accentLight,
                           onPrimary: AppColors.background,
@@ -135,12 +134,11 @@ class HomeScreen extends StatelessWidget {
                           onSurface: AppColors.textPrimary,
                         ),
                       ),
-                      child: child!,  // ✅ child: — именованный
+                      child: child!,
                     );
                   },
                 );
                 
-                // ✅ Проверка mounted после async gap
                 if (!context.mounted) return;
                 
                 if (picked != null) {
@@ -157,7 +155,6 @@ class HomeScreen extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    // Значение или подсказка
                     Expanded(
                       child: Text(
                         profile.birthDate != null
@@ -170,7 +167,6 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Иконка календаря справа
                     const Icon(Icons.calendar_today, color: AppColors.textHint, size: 20),
                   ],
                 ),
@@ -206,21 +202,6 @@ class HomeScreen extends StatelessWidget {
           onChanged: (value) => context.read<ProfileBloc>().add(
             UpdateProfileField((p) => p.copyWith(gender: value)),
           ),
-        ),
-        const SizedBox(height: 16),
-
-        // ⚖️ Вес
-        ProfileField(
-          label: 'Вес',
-          hint: 'кг',
-          keyboardType: TextInputType.number,
-          value: profile.weightKg?.toString(),
-          onChanged: (value) {
-            final weight = double.tryParse(value);
-            context.read<ProfileBloc>().add(
-              UpdateProfileField((p) => p.copyWith(weightKg: weight)),
-            );
-          },
         ),
         const SizedBox(height: 24),
 

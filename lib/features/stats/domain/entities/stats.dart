@@ -1,4 +1,6 @@
-class NutritionStats {
+import 'package:equatable/equatable.dart';
+
+class NutritionStats extends Equatable {
   final int protein;
   final int fats;
   final int carbs;
@@ -34,4 +36,38 @@ class NutritionStats {
       carbsPercent: total > 0 ? (carbs / total * 100) : 0,
     );
   }
+
+  @override
+  List<Object?> get props => [
+        protein, fats, carbs, calories,
+        proteinPercent, fatsPercent, carbsPercent,
+      ];
+}
+
+class WeightTrendPoint extends Equatable {
+  final DateTime date;
+  final double weightKg;
+
+  const WeightTrendPoint({
+    required this.date,
+    required this.weightKg,
+  });
+
+  @override
+  List<Object?> get props => [date, weightKg];
+}
+
+class StatsData extends Equatable {
+  final NutritionStats nutrition;
+  final List<WeightTrendPoint> weightTrend;
+  final int streakDays; // 🔥 Дней подряд с выполнением цели
+
+  const StatsData({
+    required this.nutrition,
+    required this.weightTrend,
+    this.streakDays = 0,
+  });
+
+  @override
+  List<Object?> get props => [nutrition, weightTrend, streakDays];
 }

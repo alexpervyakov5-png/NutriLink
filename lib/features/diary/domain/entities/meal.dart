@@ -5,13 +5,10 @@ class Meal extends Equatable {
   final String id;
   final String name;
   final String weight;
-  final int calories;
-  final int protein;
-  final int fats;
-  final int carbs;
+  final int calories, protein, fats, carbs;
   final MealType mealType;
   final DateTime createdAt;
-  final String? comment;
+  final String? comment; // ✅ Должно быть здесь
 
   const Meal({
     required this.id,
@@ -23,23 +20,8 @@ class Meal extends Equatable {
     required this.carbs,
     required this.mealType,
     required this.createdAt,
-    this.comment,
+    this.comment, // ✅
   });
-
-  // ✅ Убираем const из empty(), т.к. конструктор не const из-за DateTime.now()
-  static Meal empty() {
-    return Meal(  // ✅ Без const
-      id: '',
-      name: '',
-      weight: '0г',
-      calories: 0,
-      protein: 0,
-      fats: 0,
-      carbs: 0,
-      mealType: MealType.breakfast,
-      createdAt: DateTime(2000),  // ✅ Const-compatible дата
-    );
-  }
 
   Meal copyWith({
     String? id,
@@ -51,7 +33,7 @@ class Meal extends Equatable {
     int? carbs,
     MealType? mealType,
     DateTime? createdAt,
-    String? comment,
+    String? comment, // ✅
   }) {
     return Meal(
       id: id ?? this.id,
@@ -63,13 +45,10 @@ class Meal extends Equatable {
       carbs: carbs ?? this.carbs,
       mealType: mealType ?? this.mealType,
       createdAt: createdAt ?? this.createdAt,
-      comment: comment ?? this.comment,
+      comment: comment ?? this.comment, // ✅
     );
   }
 
   @override
-  List<Object?> get props => [
-        id, name, weight, calories, protein, fats, carbs,
-        mealType, createdAt, comment,
-      ];
+  List<Object?> get props => [id, name, weight, calories, protein, fats, carbs, mealType, createdAt, comment];
 }

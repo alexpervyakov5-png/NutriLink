@@ -6,11 +6,20 @@ abstract class StatsEvent extends Equatable {
 }
 
 class LoadStats extends StatsEvent {
-  final DateTime? startDate;
-  final DateTime? endDate;
+  final DateTime startDate;
+  final DateTime endDate;
   
-  LoadStats({this.startDate, this.endDate});
+  // ✅ Убрали const, т.к. параметры не const
+  LoadStats({
+    required this.startDate,
+    required this.endDate,
+  });
   
   @override
   List<Object?> get props => [startDate, endDate];
+}
+
+class RefreshStats extends StatsEvent {
+  @override
+  List<Object?> get props => [];
 }

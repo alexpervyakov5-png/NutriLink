@@ -5,12 +5,16 @@ import '../../domain/entities/meal.dart';
 import '../bloc/diary_bloc.dart';
 import '../bloc/diary_event.dart';
 import '../../domain/entities/meal_type.dart';
-import '../../domain/entities/daily_goals.dart';
 
 class CommentBottomSheet extends StatefulWidget {
   final MealType mealType;
+  final List<Meal> meals; // ✅ Список блюд для этого типа приёма пищи
 
-  const CommentBottomSheet({super.key, required this.mealType});
+  const CommentBottomSheet({
+    super.key,
+    required this.mealType,
+    required this.meals,
+  });
 
   @override
   State<CommentBottomSheet> createState() => _CommentBottomSheetState();
@@ -18,6 +22,30 @@ class CommentBottomSheet extends StatefulWidget {
 
 class _CommentBottomSheetState extends State<CommentBottomSheet> {
   final _controller = TextEditingController();
+  Meal? _selectedMeal;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Если есть блюда с комментарием — предзаполняем поле
+    final mealWithComment = widget.meals.firstWhere(
+      (m) => m.comment != null && m.comment!.isNotEmpty,
+      orElse: () => widget.meals.firstOrNull ?? 
+        Meal(
+          id: '',
+          name: '',
+          weight: '0г',
+          calories: 0,
+          protein: 0,
+          fats: 0,
+          carbs: 0,
+          mealType: widget.mealType,
+          createdAt: DateTime.now(),
+        ),
+    );
+    _selectedMeal = mealWithComment;
+    _controller.text = mealWithComment.comment ?? '';
+  }
 
   @override
   void dispose() {
@@ -80,7 +108,7 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
               autofocus: true,
               style: const TextStyle(color: AppColors.textPrimary),
               decoration: const InputDecoration(
-                hintText: 'Введите комментарий...',
+                hintText: 'Например: с маслом, без соли',
                 hintStyle: TextStyle(color: AppColors.textHint),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.all(12),
@@ -92,14 +120,29 @@ class _CommentBottomSheetState extends State<CommentBottomSheet> {
           // Кнопка сохранения
           ElevatedButton(
             onPressed: () {
-              if (_controller.text.trim().isNotEmpty) {
-                // TODO: Отправить событие в BLoC для сохранения комментария
-                // context.read<DiaryBloc>().add(AddComment(
-                //   mealType: widget.mealType,
-                //   text: _controller.text.trim(),
-                // ));
-                Navigator.pop(context);
-              }
+              final commentText = _controller.text.trim();
+              
+              // ✅ Отправляем событие в BLoC
+              context.read<DiaryBloc>().add(
+                AddComment(
+                  mealType: widget.mealType,
+                  mealId: _selectedMeal?.id,
+                  text: commentText.isEmpty ? null : commentText,
+                ),
+              );
+              
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(commentText.isEmpty ? 'Комментарий удалён' : 'Комментарий сохранён'),
+                  backgroundColor: AppColors.accent,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  margin: const EdgeInsets.all(16),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.accent,

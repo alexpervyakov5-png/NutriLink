@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 // ✅ Core
 import 'core/utils/constants.dart';
@@ -45,9 +45,9 @@ import 'features/measurements/presentation/bloc/measurements_event.dart';
 import 'features/measurements/presentation/pages/measurements_screen.dart';
 
 // ✅ Stats
-import 'features/stats/data/datasources/stats_mock_datasource.dart';
+import 'features/stats/data/datasources/stats_supabase_datasource.dart';
 import 'features/stats/data/repositories/stats_repository_impl.dart';
-import 'features/stats/domain/usecases/get_nutrition_stats.dart';
+import 'features/stats/domain/usecases/get_stats_data.dart';
 import 'features/stats/presentation/bloc/stats_bloc.dart';
 import 'features/stats/presentation/bloc/stats_event.dart';
 import 'features/stats/presentation/pages/stats_screen.dart';
@@ -56,17 +56,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // ✅ Инициализация Supabase
     await SupabaseConfig.initialize();
     
-    // ✅ Тест подключения
     final test = await SupabaseConfig.client
         .from('products')
         .select('id')
         .limit(1);
     debugPrint('✅ Supabase подключён! Продуктов в БД: ${test.isNotEmpty ? 'есть' : 'нет'}');
     
-    // ✅ Проверка авторизации
     final userId = SupabaseConfig.currentUserId;
     debugPrint('🔍 currentUserId: ${userId ?? "NULL (не авторизован)"}');
     
@@ -101,20 +98,17 @@ class NutriLinkApp extends StatelessWidget {
     final measurementsRepo = MeasurementsRepositoryImpl(dataSource: measurementsDs);
 
     // 🔌 Stats
-    final statsDs = StatsMockDataSourceImpl();
-    final statsRepo = StatsRepositoryImpl(mockDataSource: statsDs);
+    final statsDs = StatsSupabaseDataSourceImpl(client: supabaseClient);
+    final statsRepo = StatsRepositoryImpl(dataSource: statsDs);
 
     return MultiBlocProvider(
       providers: [
-        // 🧭 Navigation
         BlocProvider(create: (_) => NavigationBloc()),
         
-        // 🔐 Auth
         BlocProvider(
           create: (_) => AuthBloc(repository: authRepo)..add(AuthCheckRequested()),
         ),
         
-        // 👤 Profile
         BlocProvider(
           create: (_) => ProfileBloc(
             getProfile: GetProfile(profileRepo),
@@ -122,12 +116,10 @@ class NutriLinkApp extends StatelessWidget {
           )..add(LoadProfile()),
         ),
         
-        // 📓 Diary
         BlocProvider(
           create: (_) => DiaryBloc(repository: diaryRepo)..add(LoadDiaryData(date: DateTime.now())),
         ),
         
-        // 📏 Measurements — ✅ Без периода, просто загрузка
         BlocProvider(
           create: (_) => MeasurementsBloc(
             getMeasurements: GetMeasurements(measurementsRepo),
@@ -135,18 +127,28 @@ class NutriLinkApp extends StatelessWidget {
           )..add(LoadMeasurements()),
         ),
         
-        // 📊 Stats — ✅ Без периода, просто загрузка
+        // 📊 Stats — создаём без автозагрузки
         BlocProvider(
           create: (_) => StatsBloc(
-            getNutritionStats: GetNutritionStats(statsRepo),
-          )..add(LoadStats()),
+            getStatsData: GetStatsData(statsRepo),
+          ),
         ),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
         debugShowCheckedModeBanner: false,
         
-        // 🎨 Тема
+        localizationsDelegates: [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: [
+          const Locale('ru', ''),
+          const Locale('en', ''),
+        ],
+        locale: const Locale('ru'),
+        
         theme: ThemeData.dark().copyWith(
           scaffoldBackgroundColor: AppColors.background,
           appBarTheme: const AppBarTheme(
@@ -161,10 +163,8 @@ class NutriLinkApp extends StatelessWidget {
           ),
         ),
         
-        // 🔐 Auth Wrapper
         home: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
-            // Загрузка — показываем сплэш
             if (state is AuthInitial || state is AuthLoading) {
               return const Scaffold(
                 backgroundColor: AppColors.background,
@@ -188,17 +188,14 @@ class NutriLinkApp extends StatelessWidget {
               );
             }
             
-            // Авторизован — главное приложение
             if (state is AuthAuthenticated) {
-              return const MainScreen();
+              return MainScreen(); // ✅ Убрали const, т.к. нужен context
             }
             
-            // Не авторизован — экран входа
             if (state is AuthUnauthenticated || state is AuthError) {
               return const LoginScreen();
             }
             
-            // Fallback
             return const LoginScreen();
           },
         ),
@@ -209,6 +206,7 @@ class NutriLinkApp extends StatelessWidget {
 
 // 🏠 Main Screen
 class MainScreen extends StatelessWidget {
+  // ✅ Добавили ключ для корректной пересборки
   const MainScreen({super.key});
 
   @override
@@ -216,7 +214,6 @@ class MainScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundSecondary,
       
-      // AppBar с лого и меню
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -249,7 +246,6 @@ class MainScreen extends StatelessWidget {
         ],
       ),
       
-      // Тело с анимацией переключения экранов
       body: BlocBuilder<NavigationBloc, NavigationState>(
         builder: (context, state) {
           return AnimatedSwitcher(
@@ -264,22 +260,33 @@ class MainScreen extends StatelessWidget {
                 child: child,
               ),
             ),
-            child: _buildScreen(state.index),
+            child: _buildScreen(context, state.index), // ✅ Передаём context
           );
         },
       ),
       
-      // Нижняя навигация
       bottomNavigationBar: const _BottomNavigation(),
     );
   }
 
-  Widget _buildScreen(int index) {
+  // ✅ Метод принимает context для доступа к BLoC
+  Widget _buildScreen(BuildContext context, int index) {
     switch (index) {
       case 0: return const HomeScreen(key: ValueKey('home'));
       case 1: return const DiaryScreen(key: ValueKey('diary'));
       case 2: return const MeasurementsScreen(key: ValueKey('measurements'));
-      case 3: return const StatsScreen(key: ValueKey('stats'));
+      case 3: 
+        // ✅ Загружаем статистику при открытии вкладки
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // ✅ context доступен здесь, т.к. передан из build()
+          final bloc = context.read<StatsBloc>();
+          if (!bloc.state.isLoading && bloc.state.stats == null) {
+            final now = DateTime.now();
+            final start = DateTime(now.year, now.month - 1, now.day);
+            bloc.add(LoadStats(startDate: start, endDate: now));
+          }
+        });
+        return const StatsScreen(key: ValueKey('stats'));
       default: return const HomeScreen(key: ValueKey('home'));
     }
   }
@@ -305,7 +312,6 @@ class MainScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           
-          // Профиль
           ListTile(
             leading: const Icon(Icons.person, color: AppColors.textPrimary),
             title: const Text('Профиль', style: TextStyle(color: AppColors.textPrimary)),
@@ -315,7 +321,6 @@ class MainScreen extends StatelessWidget {
             },
           ),
           
-          // Настройки
           ListTile(
             leading: const Icon(Icons.settings, color: AppColors.textPrimary),
             title: const Text('Настройки', style: TextStyle(color: AppColors.textPrimary)),
@@ -325,7 +330,6 @@ class MainScreen extends StatelessWidget {
             },
           ),
           
-          // 🔐 Выйти
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Выйти', style: TextStyle(color: Colors.red)),

@@ -35,25 +35,21 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
       }
     }
 
-    // ✅ Если записи нет — возвращаем пустой профиль с дефолтной целью
     if (response == null) {
       return Profile(
         id: userId,
         firstName: '',
         lastName: '',
-        goal: GoalType.maintenance, // ✅ Дефолтная цель
+        goal: GoalType.maintenance,
         heightCm: null,
-        weightKg: null,
         birthDate: null,
         gender: null,
       );
     }
 
-    // ✅ Парсинг поля goal из строки БД в enum GoalType
     GoalType parseGoal(String? goalStr) {
       if (goalStr == null) return GoalType.maintenance;
       try {
-        // Ищем значение enum, которое совпадает со строкой из БД
         return GoalType.values.firstWhere(
           (e) => e.toString().split('.').last == goalStr,
           orElse: () => GoalType.maintenance,
@@ -63,7 +59,6 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
       }
     }
 
-    // ✅ Парсим данные из БД
     return Profile(
       id: response['id'],
       firstName: _parseFirstName(response['username']),
@@ -73,8 +68,7 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
           : null,
       heightCm: response['height_cm']?.toInt(),
       gender: response['gender'],
-      weightKg: response['weight_kg']?.toDouble(),
-      goal: parseGoal(response['goal']), // ✅ Загружаем цель из БД
+      goal: parseGoal(response['goal']),
     );
   }
 
@@ -102,7 +96,6 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
       debugPrint('   userId: $userId');
       debugPrint('   username: ${profile.firstName} ${profile.lastName}');
       debugPrint('   goal: ${profile.goal}');
-      debugPrint('   weight_kg: ${profile.weightKg}');
       debugPrint('   gender: ${profile.gender}');
     }
 
@@ -110,15 +103,12 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
     final userEmail = client.auth.currentUser?.email ?? '';
 
     try {
-      // ✅ upsert создаст запись, если её нет, или обновит существующую
       await client.from('users').upsert({
-        'id': userId, // 🔥 Критично: id должен совпадать с auth.uid()
+        'id': userId,
         'username': username.isNotEmpty ? username : null,
         'email': userEmail,
         'height_cm': profile.heightCm,
-        'weight_kg': profile.weightKg,
         'gender': profile.gender,
-        // ✅ Сохраняем цель как строку (например, 'maintenance')
         'goal': profile.goal.toString().split('.').last,
         'date_of_birth': profile.birthDate?.toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
@@ -127,7 +117,6 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
       if (kDebugMode) debugPrint('✅ Профиль успешно сохранён!');
       
     } on PostgrestException catch (e) {
-      // ✅ Ловим ошибки от Supabase (RLS, валидация, типы данных)
       if (kDebugMode) {
         debugPrint('❌ PostgrestException: ${e.message}');
         debugPrint('🔎 details: ${e.details}');
@@ -136,7 +125,6 @@ class ProfileSupabaseDataSourceImpl implements ProfileSupabaseDataSource {
       throw ServerException('Ошибка сохранения: ${e.message}');
       
     } catch (e, stack) {
-      // ✅ Любые другие ошибки
       if (kDebugMode) {
         debugPrint('❌ Исключение: $e');
         debugPrint('📋 Stack: $stack');

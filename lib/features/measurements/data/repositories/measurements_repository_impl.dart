@@ -26,7 +26,7 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
       
       if (actualUserId == null || actualUserId.isEmpty) {
         debugPrint('❌ Repository: userId is null or empty!');
-        return Left(ServerFailure());
+        return const Left(ServerFailure(message: 'Пользователь не авторизован'));
       }
       
       final result = await dataSource.getMeasurements(
@@ -38,26 +38,24 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
       return Right(result);
     } on ServerException catch (e) {
       debugPrint('❌ Repository: getMeasurements ServerException: $e');
-      return Left(ServerFailure());
+      return Left(ServerFailure(message: e.message));
     } catch (e, stack) {
       debugPrint('❌ Repository: getMeasurements ошибка: $e');
       debugPrint('📋 Stack: $stack');
-      return Left(ServerFailure());
+      return const Left(ServerFailure(message: 'Не удалось загрузить замеры'));
     }
   }
 
   @override
   Future<Either<Failure, void>> saveMeasurement(Measurement measurement) async {
     debugPrint('🔍 Repository: saveMeasurement');
-    debugPrint('  входящий userId: ${measurement.userId}');
     
     try {
       final actualUserId = SupabaseConfig.currentUserId;
-      debugPrint('  SupabaseConfig.currentUserId: $actualUserId');
       
       if (actualUserId == null || actualUserId.isEmpty) {
         debugPrint('❌ Repository: Пользователь не авторизован!');
-        return Left(ServerFailure());
+        return const Left(ServerFailure(message: 'Пользователь не авторизован'));
       }
       
       final measurementWithUser = Measurement(
@@ -69,26 +67,22 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
         hipsCm: measurement.hipsCm,
       );
       
-      debugPrint('📤 Repository: Вызываем dataSource.saveMeasurement');
-      debugPrint('  с userId: ${measurementWithUser.userId}');
-      
       await dataSource.saveMeasurement(measurementWithUser);
       debugPrint('✅ Repository: saveMeasurement успешно');
       return const Right(null);
     } on ServerException catch (e) {
       debugPrint('❌ Repository: saveMeasurement ServerException: $e');
-      return Left(ServerFailure());
+      return Left(ServerFailure(message: e.message));
     } catch (e, stack) {
       debugPrint('❌ Repository: saveMeasurement ошибка: $e');
       debugPrint('📋 Stack: $stack');
-      return Left(ServerFailure());
+      return const Left(ServerFailure(message: 'Не удалось сохранить замер'));
     }
   }
 
   @override
   Future<Either<Failure, void>> updateMeasurement(Measurement measurement) async {
-    debugPrint('🔍 Repository: updateMeasurement');
-    debugPrint('  id: ${measurement.id}');
+    debugPrint('🔍 Repository: updateMeasurement id=${measurement.id}');
     
     try {
       await dataSource.updateMeasurement(measurement);
@@ -96,18 +90,17 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
       return const Right(null);
     } on ServerException catch (e) {
       debugPrint('❌ Repository: updateMeasurement ServerException: $e');
-      return Left(ServerFailure());
+      return Left(ServerFailure(message: e.message));
     } catch (e, stack) {
       debugPrint('❌ Repository: updateMeasurement ошибка: $e');
       debugPrint('📋 Stack: $stack');
-      return Left(ServerFailure());
+      return const Left(ServerFailure(message: 'Не удалось обновить замер'));
     }
   }
 
   @override
   Future<Either<Failure, void>> deleteMeasurement(String id) async {
-    debugPrint('🔍 Repository: deleteMeasurement');
-    debugPrint('  id: $id');
+    debugPrint('🔍 Repository: deleteMeasurement id=$id');
     
     try {
       await dataSource.deleteMeasurement(id);
@@ -115,11 +108,11 @@ class MeasurementsRepositoryImpl implements MeasurementsRepository {
       return const Right(null);
     } on ServerException catch (e) {
       debugPrint('❌ Repository: deleteMeasurement ServerException: $e');
-      return Left(ServerFailure());
+      return Left(ServerFailure(message: e.message));
     } catch (e, stack) {
       debugPrint('❌ Repository: deleteMeasurement ошибка: $e');
       debugPrint('📋 Stack: $stack');
-      return Left(ServerFailure());
+      return const Left(ServerFailure(message: 'Не удалось удалить замер'));
     }
   }
 }

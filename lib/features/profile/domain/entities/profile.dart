@@ -7,7 +7,6 @@ class Profile {
   final DateTime? birthDate;
   final int? heightCm;
   final String? gender;
-  final double? weightKg;
   final GoalType goal;
 
   Profile({
@@ -17,7 +16,6 @@ class Profile {
     this.birthDate,
     this.heightCm,
     this.gender,
-    this.weightKg,
     required this.goal,
   });
 
@@ -27,7 +25,6 @@ class Profile {
     DateTime? birthDate,
     int? heightCm,
     String? gender,
-    double? weightKg,
     GoalType? goal,
   }) {
     return Profile(
@@ -37,7 +34,6 @@ class Profile {
       birthDate: birthDate ?? this.birthDate,
       heightCm: heightCm ?? this.heightCm,
       gender: gender ?? this.gender,
-      weightKg: weightKg ?? this.weightKg,
       goal: goal ?? this.goal,
     );
   }

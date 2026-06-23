@@ -10,9 +10,9 @@ class ChartLegend extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _buildLegendItem('Белки', Colors.green),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
         _buildLegendItem('Жиры', Colors.red),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
         _buildLegendItem('Углеводы', Colors.orange),
       ],
     );
@@ -22,15 +22,21 @@ class ChartLegend extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 12,
-          height: 12,
+          width: 14,
+          height: 14,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }

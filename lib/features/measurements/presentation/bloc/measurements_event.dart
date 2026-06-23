@@ -17,38 +17,42 @@ class LoadMeasurements extends MeasurementsEvent {
 
 class SaveMeasurements extends MeasurementsEvent {
   final DateTime measuredAt;
+  final double? weightKg;
   final double? chestCm;
   final double? waistCm;
   final double? hipsCm;
-  
+
   SaveMeasurements({
     required this.measuredAt,
+    this.weightKg,
     this.chestCm,
     this.waistCm,
     this.hipsCm,
   });
   
   @override
-  List<Object?> get props => [measuredAt, chestCm, waistCm, hipsCm];
+  List<Object?> get props => [measuredAt, weightKg, chestCm, waistCm, hipsCm];
 }
 
 class UpdateMeasurements extends MeasurementsEvent {
   final String id;
   final DateTime measuredAt;
+  final double? weightKg;
   final double? chestCm;
   final double? waistCm;
   final double? hipsCm;
-  
+
   UpdateMeasurements({
     required this.id,
     required this.measuredAt,
+    this.weightKg,
     this.chestCm,
     this.waistCm,
     this.hipsCm,
   });
   
   @override
-  List<Object?> get props => [id, measuredAt, chestCm, waistCm, hipsCm];
+  List<Object?> get props => [id, measuredAt, weightKg, chestCm, waistCm, hipsCm];
 }
 
 class DeleteMeasurement extends MeasurementsEvent {

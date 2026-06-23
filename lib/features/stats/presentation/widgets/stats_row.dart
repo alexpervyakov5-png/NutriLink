@@ -6,7 +6,8 @@ class StatsRow extends StatelessWidget {
   final String value;
   final String percent;
   final Color color;
-  final String imagePath;  // ✅ Путь к изображению
+  final IconData icon;
+  final bool isTotal;
 
   const StatsRow({
     super.key,
@@ -14,7 +15,8 @@ class StatsRow extends StatelessWidget {
     required this.value,
     required this.percent,
     required this.color,
-    required this.imagePath,
+    required this.icon,
+    this.isTotal = false,
   });
 
   @override
@@ -23,61 +25,55 @@ class StatsRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          // ✅ Изображение
+          // Иконка
           Container(
-            width: 24,
-            height: 24,
-            child: Image.asset(
-              imagePath,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                // Fallback если изображение не найдено
-                return Icon(
-                  _getFallbackIcon(label),
-                  color: color,
-                  size: 20,
-                );
-              },
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
             ),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
+          
+          // Название
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              style: TextStyle(
+                color: isTotal ? AppColors.textPrimary : AppColors.textSecondary,
+                fontSize: isTotal ? 15 : 14,
+                fontWeight: isTotal ? FontWeight.w600 : FontWeight.normal,
+              ),
             ),
           ),
+          
+          // Значение
           Text(
             value,
-            style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: isTotal ? AppColors.accentLight : color,
+              fontSize: isTotal ? 16 : 14,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+            ),
           ),
+          
           const SizedBox(width: 16),
+          
+          // Процент
           SizedBox(
             width: 50,
             child: Text(
               percent,
               textAlign: TextAlign.right,
-              style: const TextStyle(color: AppColors.textHint, fontSize: 12),
+              style: TextStyle(
+                color: isTotal ? AppColors.textPrimary : AppColors.textHint,
+                fontSize: 12,
+              ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  // ✅ Fallback иконки
-  IconData _getFallbackIcon(String label) {
-    switch (label) {
-      case 'Белки':
-        return Icons.local_fire_department;
-      case 'Жиры':
-        return Icons.water_drop;
-      case 'Углеводы':
-        return Icons.grain;
-      case 'Калории':
-        return Icons.bolt;
-      default:
-        return Icons.info;
-    }
   }
 }

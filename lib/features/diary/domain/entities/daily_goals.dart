@@ -22,6 +22,17 @@ class DailyGoals extends Equatable {
     required this.caloriesCurrent,
   });
 
+  // ✅ Конструктор для пустых целей (по умолчанию)
+  const DailyGoals.empty()
+      : proteinTarget = 100,
+        fatsTarget = 65,
+        carbsTarget = 285,
+        caloriesTarget = 2500,
+        proteinCurrent = 0,
+        fatsCurrent = 0,
+        carbsCurrent = 0,
+        caloriesCurrent = 0;
+
   DailyGoals copyWith({
     int? proteinTarget,
     int? fatsTarget,

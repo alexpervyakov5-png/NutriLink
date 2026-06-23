@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/utils/constants.dart';
 import '../../domain/entities/measurement.dart';
 import '../bloc/measurements_bloc.dart';
@@ -21,9 +20,36 @@ class MeasurementsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
+          if (state.error != null && state.error!.isNotEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red[300], size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.error!,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<MeasurementsBloc>().add(LoadMeasurements());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: Colors.black,
+                    ),
+                    child: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return Column(
             children: [
-              // ❌ Убран _buildHeader
               Expanded(
                 child: state.measurements.isEmpty
                     ? _buildEmptyState()
@@ -36,8 +62,6 @@ class MeasurementsScreen extends StatelessWidget {
       ),
     );
   }
-
-  // ❌ Удалён метод _buildHeader
 
   Widget _buildEmptyState() {
     return Center(
@@ -108,7 +132,7 @@ class MeasurementsScreen extends StatelessWidget {
               style: TextStyle(color: AppColors.textPrimary),
             ),
             content: Text(
-              'Дата: ${DateFormat('dd MMM yyyy').format(measurement.measuredAt)}',
+              'Дата: ${_formatDateRu(measurement.measuredAt)}',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             actions: [
@@ -154,7 +178,7 @@ class MeasurementsScreen extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      DateFormat('dd MMMM yyyy').format(measurement.measuredAt),
+                      _formatDateRu(measurement.measuredAt),
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 13,
@@ -173,6 +197,8 @@ class MeasurementsScreen extends StatelessWidget {
                 
                 Row(
                   children: [
+                    if (measurement.weightKg != null)
+                      Expanded(child: _buildStat('Вес', '${measurement.weightKg} кг')),
                     if (measurement.chestCm != null)
                       Expanded(child: _buildStat('Грудь', '${measurement.chestCm}')),
                     if (measurement.waistCm != null)
@@ -223,32 +249,42 @@ class MeasurementsScreen extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _showAddMeasurementDialog(context, state),
+          onTap: state.isLoading 
+            ? null
+            : () => _showAddMeasurementDialog(context, state),
           borderRadius: BorderRadius.circular(10),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: state.isLoading ? AppColors.backgroundSecondary : AppColors.background,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.add,
-                  size: 20,
-                  color: AppColors.textPrimary,
-                ),
-                SizedBox(width: 8),
-                Text(
-                  'Добавить замер',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+            child: Center(
+              child: state.isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add,
+                        size: 20,
+                        color: AppColors.textPrimary,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Добавить замер',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
             ),
           ),
         ),
@@ -285,6 +321,14 @@ class MeasurementsScreen extends StatelessWidget {
       ),
     );
   }
+
+  String _formatDateRu(DateTime date) {
+    const months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year} г';
+  }
 }
 
 class _MeasurementForm extends StatefulWidget {
@@ -303,6 +347,7 @@ class _MeasurementForm extends StatefulWidget {
 class _MeasurementFormState extends State<_MeasurementForm> {
   final _formKey = GlobalKey<FormState>();
   late DateTime _selectedDate;
+  final _weightController = TextEditingController();
   final _chestController = TextEditingController();
   final _waistController = TextEditingController();
   final _hipsController = TextEditingController();
@@ -313,6 +358,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
     _selectedDate = widget.selectedDate;
     
     if (widget.measurement != null) {
+      _weightController.text = widget.measurement!.weightKg?.toStringAsFixed(1) ?? '';
       _chestController.text = widget.measurement!.chestCm?.toString() ?? '';
       _waistController.text = widget.measurement!.waistCm?.toString() ?? '';
       _hipsController.text = widget.measurement!.hipsCm?.toString() ?? '';
@@ -321,6 +367,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
 
   @override
   void dispose() {
+    _weightController.dispose();
     _chestController.dispose();
     _waistController.dispose();
     _hipsController.dispose();
@@ -373,6 +420,15 @@ class _MeasurementFormState extends State<_MeasurementForm> {
             _buildDateSelector(),
             const SizedBox(height: 20),
             
+            MeasurementField(
+              controller: _weightController,
+              label: 'Вес',
+              hint: '0',
+              icon: Icons.monitor_weight,
+              suffix: 'кг',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 14),
             MeasurementField(
               controller: _chestController,
               label: 'Грудь',
@@ -458,7 +514,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                DateFormat('dd MMMM yyyy').format(_selectedDate),
+                _formatDateRu(_selectedDate),
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 14,
@@ -481,6 +537,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
       context.read<MeasurementsBloc>().add(
         SaveMeasurements(
           measuredAt: _selectedDate,
+          weightKg: double.tryParse(_weightController.text),
           chestCm: double.tryParse(_chestController.text),
           waistCm: double.tryParse(_waistController.text),
           hipsCm: double.tryParse(_hipsController.text),
@@ -497,6 +554,7 @@ class _MeasurementFormState extends State<_MeasurementForm> {
         UpdateMeasurements(
           id: widget.measurement!.id,
           measuredAt: _selectedDate,
+          weightKg: double.tryParse(_weightController.text),
           chestCm: double.tryParse(_chestController.text),
           waistCm: double.tryParse(_waistController.text),
           hipsCm: double.tryParse(_hipsController.text),
@@ -519,5 +577,13 @@ class _MeasurementFormState extends State<_MeasurementForm> {
         margin: const EdgeInsets.all(16),
       ),
     );
+  }
+
+  String _formatDateRu(DateTime date) {
+    const months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year} г';
   }
 }

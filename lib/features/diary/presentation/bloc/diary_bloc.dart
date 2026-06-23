@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dartz/dartz.dart'; // ✅ Обязательно для Either
+import 'package:dartz/dartz.dart';
 import '../../domain/entities/meal.dart';
 import '../../domain/entities/daily_goals.dart';
 import '../../domain/entities/meal_type.dart';
@@ -10,6 +11,7 @@ import 'diary_state.dart';
 
 class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
   final DiaryRepository repository;
+  bool _isLoading = false;
 
   DiaryBloc({required this.repository}) : super(DiaryState.initial()) {
     on<LoadDiaryData>(_onLoadDiaryData);
@@ -21,89 +23,36 @@ class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
   }
 
   Future<void> _onLoadDiaryData(LoadDiaryData event, Emitter<DiaryState> emit) async {
-    debugPrint('🔍 BLoC: LoadDiaryData для ${event.date}');
+    if (_isLoading) return;
+    _isLoading = true;
+
+    debugPrint('🔍 LoadDiaryData: ${event.date}');
     emit(state.copyWith(isLoading: true, error: null));
-    
+
     try {
-      // ✅ Загружаем последовательно для простоты и отладки
-      final goalsResult = await repository.getDailyGoals(event.date);
-      final breakfastResult = await repository.getMealsByType(MealType.breakfast, event.date);
-      final lunchResult = await repository.getMealsByType(MealType.lunch, event.date);
-      final dinnerResult = await repository.getMealsByType(MealType.dinner, event.date);
-      final snackResult = await repository.getMealsByType(MealType.snack, event.date);
+      final results = await Future.wait([
+        repository.getDailyGoals(event.date).timeout(const Duration(seconds: 10)),
+        repository.getMealsByType(MealType.breakfast, event.date).timeout(const Duration(seconds: 10)),
+        repository.getMealsByType(MealType.lunch, event.date).timeout(const Duration(seconds: 10)),
+        repository.getMealsByType(MealType.dinner, event.date).timeout(const Duration(seconds: 10)),
+        repository.getMealsByType(MealType.snack, event.date).timeout(const Duration(seconds: 10)),
+      ]);
 
-      debugPrint('✅ BLoC: Все данные загружены');
+      final goalsResult = results[0] as Either;
+      final breakfastResult = results[1] as Either;
+      final lunchResult = results[2] as Either;
+      final dinnerResult = results[3] as Either;
+      final snackResult = results[4] as Either;
 
-      // ✅ Проверяем цели
-      DailyGoals? goals;
-      goalsResult.fold(
-        (failure) {
-          debugPrint('❌ Ошибка загрузки целей: $failure');
-          goals = DailyGoals(
-            proteinTarget: 100,
-            fatsTarget: 65,
-            carbsTarget: 285,
-            caloriesTarget: 2500,
-            proteinCurrent: 0,
-            fatsCurrent: 0,
-            carbsCurrent: 0,
-            caloriesCurrent: 0,
-          );
-        },
-        (g) {
-          debugPrint('✅ Цели загружены: ${g.caloriesTarget} ккал');
-          goals = g;
-        },
-      );
+      DailyGoals goals = const DailyGoals.empty();
+      goalsResult.fold((_) => {}, (g) => goals = g);
 
-      // ✅ Загружаем приёмы пищи
       final meals = <MealType, List<Meal>>{};
-      
-      breakfastResult.fold(
-        (failure) {
-          debugPrint('⚠️ Ошибка загрузки завтрака: $failure');
-          meals[MealType.breakfast] = [];
-        },
-        (breakfast) {
-          debugPrint('✅ Завтрак: ${breakfast.length} блюд');
-          meals[MealType.breakfast] = breakfast;
-        },
-      );
+      breakfastResult.fold((_) => meals[MealType.breakfast] = [], (b) => meals[MealType.breakfast] = b);
+      lunchResult.fold((_) => meals[MealType.lunch] = [], (l) => meals[MealType.lunch] = l);
+      dinnerResult.fold((_) => meals[MealType.dinner] = [], (d) => meals[MealType.dinner] = d);
+      snackResult.fold((_) => meals[MealType.snack] = [], (s) => meals[MealType.snack] = s);
 
-      lunchResult.fold(
-        (failure) {
-          debugPrint('⚠️ Ошибка загрузки обеда: $failure');
-          meals[MealType.lunch] = [];
-        },
-        (lunch) {
-          debugPrint('✅ Обед: ${lunch.length} блюд');
-          meals[MealType.lunch] = lunch;
-        },
-      );
-
-      dinnerResult.fold(
-        (failure) {
-          debugPrint('⚠️ Ошибка загрузки ужина: $failure');
-          meals[MealType.dinner] = [];
-        },
-        (dinner) {
-          debugPrint('✅ Ужин: ${dinner.length} блюд');
-          meals[MealType.dinner] = dinner;
-        },
-      );
-
-      snackResult.fold(
-        (failure) {
-          debugPrint('⚠️ Ошибка загрузки перекусов: $failure');
-          meals[MealType.snack] = [];
-        },
-        (snack) {
-          debugPrint('✅ Перекусы: ${snack.length} блюд');
-          meals[MealType.snack] = snack;
-        },
-      );
-
-      // ✅ Emit состояния
       emit(state.copyWith(
         selectedDate: event.date,
         goals: goals,
@@ -111,30 +60,33 @@ class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
         isLoading: false,
         error: null,
       ));
-      
-      debugPrint('✅ BLoC: Состояние обновлено');
-      
-    } catch (e, stack) {
-      debugPrint('❌ BLoC: Критическая ошибка: $e');
-      debugPrint('📋 Stack: $stack');
+
+      debugPrint('✅ LoadDiaryData OK');
+    } catch (e) {
+      debugPrint('❌ LoadDiaryData ERROR: $e');
       emit(state.copyWith(
         isLoading: false,
-        error: 'Ошибка загрузки: ${e.toString()}',
+        error: 'Ошибка загрузки',
+        goals: const DailyGoals.empty(),
+        meals: {
+          MealType.breakfast: [],
+          MealType.lunch: [],
+          MealType.dinner: [],
+          MealType.snack: [],
+        },
       ));
+    } finally {
+      _isLoading = false;
     }
   }
 
   void _onToggleMealSection(ToggleMealSection event, Emitter<DiaryState> emit) {
     final current = state.expandedSections[event.mealType] ?? false;
-    final updated = Map<MealType, bool>.from(state.expandedSections)
-      ..[event.mealType] = !current;
+    final updated = Map<MealType, bool>.from(state.expandedSections)..[event.mealType] = !current;
     emit(state.copyWith(expandedSections: updated));
   }
 
   Future<void> _onAddMealItem(AddMealItem event, Emitter<DiaryState> emit) async {
-    debugPrint('🔍 BLoC: AddMealItem - ${event.productName}');
-    
-    // Оптимистичное обновление UI
     final newMeal = Meal(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: event.productName,
@@ -145,16 +97,15 @@ class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
       carbs: event.carbs,
       mealType: event.mealType,
       createdAt: DateTime.now(),
-      comment: null,
+      comment: event.comment,
     );
 
     final currentMeals = state.meals[event.mealType] ?? [];
     final updatedMeals = Map<MealType, List<Meal>>.from(state.meals)
       ..[event.mealType] = [...currentMeals, newMeal];
 
-    final currentGoals = state.goals;
-    // ✅ Исправлено: currentGoals не может быть null здесь, т.к. мы его загрузили
-    final updatedGoals = currentGoals!.copyWith(
+    final currentGoals = state.goals!;
+    final updatedGoals = currentGoals.copyWith(
       caloriesCurrent: currentGoals.caloriesCurrent + event.calories,
       proteinCurrent: currentGoals.proteinCurrent + event.protein,
       fatsCurrent: currentGoals.fatsCurrent + event.fats,
@@ -163,37 +114,100 @@ class DiaryBloc extends Bloc<DiaryEvent, DiaryState> {
 
     emit(state.copyWith(meals: updatedMeals, goals: updatedGoals));
 
-    // Сохранение в БД
-    debugPrint('📤 BLoC: Сохраняем в БД...');
-    final result = await repository.addMealItem(newMeal, event.productId);
-
-    result.fold(
-      (failure) {
-        debugPrint('❌ BLoC: Ошибка сохранения: $failure');
-        emit(state.copyWith(error: 'Не удалось сохранить'));
-        // Откат изменений
-        add(LoadDiaryData(date: state.selectedDate));
-      },
-      (_) {
-        debugPrint('✅ BLoC: Сохранение успешно');
-        // Перезагружаем данные
-        add(LoadDiaryData(date: state.selectedDate));
-      },
-    );
+    try {
+      final result = await repository.addMealItem(newMeal, event.productId);
+      result.fold(
+        (failure) => debugPrint('❌ Save error: $failure'),
+        (_) => add(LoadDiaryData(date: state.selectedDate)),
+      );
+    } catch (e) {
+      debugPrint('❌ Network error: $e');
+    }
   }
 
   Future<void> _onUpdateMealItem(UpdateMealItem event, Emitter<DiaryState> emit) async {
-    // TODO: Реализовать обновление
-    debugPrint('⚠️ UpdateMealItem not implemented yet');
+    final currentMeals = state.meals[event.mealType] ?? [];
+    final updatedMealsList = currentMeals.map((meal) {
+      if (meal.id == event.mealId) {
+        return meal.copyWith(
+          weight: event.weight,
+          calories: event.calories,
+          protein: event.protein,
+          fats: event.fats,
+          carbs: event.carbs,
+          comment: event.comment,
+        );
+      }
+      return meal;
+    }).toList();
+
+    final updatedMeals = Map<MealType, List<Meal>>.from(state.meals)
+      ..[event.mealType] = updatedMealsList;
+
+    emit(state.copyWith(meals: updatedMeals));
+
+    try {
+      final updatedMeal = updatedMealsList.firstWhere((m) => m.id == event.mealId);
+      final result = await repository.updateMealItem(updatedMeal);
+      result.fold(
+        (failure) => debugPrint('❌ Update error: $failure'),
+        (_) => add(LoadDiaryData(date: state.selectedDate)),
+      );
+    } catch (e) {
+      add(LoadDiaryData(date: state.selectedDate));
+    }
   }
 
   Future<void> _onRemoveMealItem(RemoveMealItem event, Emitter<DiaryState> emit) async {
-    // TODO: Реализовать удаление
-    debugPrint('⚠️ RemoveMealItem not implemented yet');
+    final currentMeals = state.meals[event.mealType] ?? [];
+    final updatedMealsList = currentMeals.where((m) => m.id != event.mealId).toList();
+    final updatedMeals = Map<MealType, List<Meal>>.from(state.meals)
+      ..[event.mealType] = updatedMealsList;
+
+    emit(state.copyWith(meals: updatedMeals));
+
+    try {
+      final result = await repository.deleteMealItem(event.mealId);
+      result.fold(
+        (failure) => debugPrint('❌ Delete error: $failure'),
+        (_) => add(LoadDiaryData(date: state.selectedDate)),
+      );
+    } catch (e) {
+      add(LoadDiaryData(date: state.selectedDate));
+    }
   }
 
-  void _onAddComment(AddComment event, Emitter<DiaryState> emit) {
-    // TODO: Реализовать добавление комментария
-    debugPrint('⚠️ AddComment not implemented yet');
+  Future<void> _onAddComment(AddComment event, Emitter<DiaryState> emit) async {
+    String? targetMealId = event.mealId;
+    if (targetMealId == null || targetMealId.isEmpty) {
+      final mealsOfType = state.meals[event.mealType] ?? [];
+      if (mealsOfType.isNotEmpty) targetMealId = mealsOfType.first.id;
+    }
+
+    if (targetMealId == null || targetMealId.isEmpty) return;
+
+    final currentMeals = state.meals[event.mealType] ?? [];
+    final updatedMealsList = currentMeals.map((meal) {
+      if (meal.id == targetMealId) {
+        return meal.copyWith(comment: event.text);
+      }
+      return meal;
+    }).toList();
+
+    final updatedMeals = Map<MealType, List<Meal>>.from(state.meals)
+      ..[event.mealType] = updatedMealsList;
+
+    emit(state.copyWith(meals: updatedMeals));
+
+    try {
+      final updatedMeal = updatedMealsList.firstWhere((m) => m.id == targetMealId);
+      final result = await repository.updateMealItem(updatedMeal);
+      result.fold(
+        (failure) => debugPrint('❌ Comment error: $failure'),
+        (_) => debugPrint('✅ Comment saved'),
+      );
+    } catch (e) {
+      add(LoadDiaryData(date: state.selectedDate));
+    }
   }
 }

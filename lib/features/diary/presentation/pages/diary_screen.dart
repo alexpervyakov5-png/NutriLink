@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/utils/constants.dart';
 import '../../domain/entities/meal.dart';
 import '../bloc/diary_bloc.dart';
@@ -10,7 +11,6 @@ import '../widgets/meal_section.dart';
 import '../widgets/comment_bottom_sheet.dart';
 import 'add_food_screen.dart';
 import '../../domain/entities/meal_type.dart';
-import '../../domain/entities/daily_goals.dart';
 
 class DiaryScreen extends StatelessWidget {
   const DiaryScreen({super.key});
@@ -56,7 +56,7 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.breakfast),
                       ),
-                      onCommentTap: () => _showCommentSheet(context, MealType.breakfast),
+                      onCommentTap: () => _showCommentSheet(context, MealType.breakfast, state),
                       onAddTap: () => _navigateToAddFood(context, MealType.breakfast),
                       items: state.meals[MealType.breakfast] ?? [],
                     ),
@@ -68,7 +68,7 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.lunch),
                       ),
-                      onCommentTap: () => _showCommentSheet(context, MealType.lunch),
+                      onCommentTap: () => _showCommentSheet(context, MealType.lunch, state),
                       onAddTap: () => _navigateToAddFood(context, MealType.lunch),
                       items: state.meals[MealType.lunch] ?? [],
                     ),
@@ -80,7 +80,7 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.dinner),
                       ),
-                      onCommentTap: () => _showCommentSheet(context, MealType.dinner),
+                      onCommentTap: () => _showCommentSheet(context, MealType.dinner, state),
                       onAddTap: () => _navigateToAddFood(context, MealType.dinner),
                       items: state.meals[MealType.dinner] ?? [],
                     ),
@@ -92,7 +92,7 @@ class DiaryScreen extends StatelessWidget {
                       onExpansionChanged: () => context.read<DiaryBloc>().add(
                         ToggleMealSection(mealType: MealType.snack),
                       ),
-                      onCommentTap: () => _showCommentSheet(context, MealType.snack),
+                      onCommentTap: () => _showCommentSheet(context, MealType.snack, state),
                       onAddTap: () => _navigateToAddFood(context, MealType.snack),
                       items: state.meals[MealType.snack] ?? [],
                     ),
@@ -118,21 +118,33 @@ class DiaryScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text('День', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          const Text(
-            '31 января 2026 г',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+          
+          // ✅ ДИНАМИЧЕСКАЯ ДАТА из состояния BLoC
+          BlocBuilder<DiaryBloc, DiaryState>(
+            builder: (context, state) {
+              final formattedDate = DateFormat('dd MMMM yyyy', 'ru_RU').format(state.selectedDate);
+              return Text(
+                formattedDate,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              );
+            },
           ),
+          
           GestureDetector(
             onTap: () async {
+              final currentDate = context.read<DiaryBloc>().state.selectedDate;
               final date = await showDatePicker(
                 context: context,
-                initialDate: DateTime.now(),
+                initialDate: currentDate,
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
                 builder: (context, child) {
-                  // ✅ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: именованные параметры data и child
                   return Theme(
-                    data: Theme.of(context).copyWith(  // ✅ data: — именованный параметр
+                    data: Theme.of(context).copyWith(
                       colorScheme: ColorScheme.dark(
                         primary: AppColors.accentLight,
                         onPrimary: AppColors.background,
@@ -140,11 +152,10 @@ class DiaryScreen extends StatelessWidget {
                         onSurface: AppColors.textPrimary,
                       ),
                     ),
-                    child: child!,  // ✅ child: — именованный параметр
+                    child: child!,
                   );
                 },
               );
-              // ✅ Проверка mounted после async gap
               if (!context.mounted) return;
               if (date != null) {
                 context.read<DiaryBloc>().add(LoadDiaryData(date: date));
@@ -164,17 +175,22 @@ class DiaryScreen extends StatelessWidget {
     );
   }
 
-  // ✅ Показать полустраницу с комментарием
-  void _showCommentSheet(BuildContext context, MealType mealType) {
+  // ✅ Показываем полустраницу с комментарием (теперь передаём meals)
+  void _showCommentSheet(BuildContext context, MealType mealType, DiaryState state) {
+    final mealsOfType = state.meals[mealType] ?? [];
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => CommentBottomSheet(mealType: mealType),
+      builder: (context) => CommentBottomSheet(
+        mealType: mealType,
+        meals: mealsOfType,
+      ),
     );
   }
 
-  // ✅ Перейти на страницу добавления продуктов
+  // ✅ Переход на страницу добавления продуктов
   void _navigateToAddFood(BuildContext context, MealType mealType) {
     Navigator.push(
       context,

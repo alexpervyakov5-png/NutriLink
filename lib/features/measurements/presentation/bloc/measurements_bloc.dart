@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/error/failures.dart';
 import '../../domain/entities/measurement.dart';
 import '../../domain/usecases/get_measurements.dart';
 import '../../domain/usecases/save_measurement.dart';
@@ -26,81 +27,176 @@ class MeasurementsBloc extends Bloc<MeasurementsEvent, MeasurementsState> {
     LoadMeasurements event,
     Emitter<MeasurementsState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true));
+    final stopwatch = Stopwatch()..start();
+    debugPrint('🔍 MeasurementsBloc: LoadMeasurements START');
+    debugPrint('  startDate: ${event.startDate}');
+    debugPrint('  endDate: ${event.endDate}');
     
-    final result = await getMeasurements(GetMeasurementsParams(
-      startDate: event.startDate,
-      endDate: event.endDate,
-    ));
+    emit(state.copyWith(isLoading: true, error: null));
     
-    result.fold(
-      (failure) => emit(state.copyWith(isLoading: false, error: 'Ошибка загрузки')),
-      (measurements) {
-        final sorted = measurements..sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
-        emit(state.copyWith(
-          isLoading: false,
-          measurements: sorted,
-        ));
-      },
-    );
+    try {
+      debugPrint('⏳ Вызываем getMeasurements UseCase...');
+      final result = await getMeasurements(GetMeasurementsParams(
+        startDate: event.startDate,
+        endDate: event.endDate,
+      ));
+      
+      debugPrint('✅ UseCase вернул результат за ${stopwatch.elapsedMilliseconds}ms');
+      
+      result.fold(
+        (failure) {
+          debugPrint('❌ MeasurementsBloc: Ошибка загрузки: $failure');
+          debugPrint('   Type: ${failure.runtimeType}');
+          debugPrint('   Message: ${failure.message}');
+          
+          final errorMsg = failure.message ?? 'Не удалось загрузить замеры';
+          emit(state.copyWith(
+            isLoading: false, 
+            error: errorMsg,
+            measurements: [],
+          ));
+        },
+        (measurements) {
+          debugPrint('✅ MeasurementsBloc: Получено ${measurements.length} замеров');
+          
+          if (measurements.isEmpty) {
+            debugPrint('ℹ️ Список замеров пуст (это нормально для нового пользователя)');
+          } else {
+            final first = measurements.first;
+            debugPrint('📊 Первый замер: ${first.weightKg}кг, ${first.chestCm}/${first.waistCm}/${first.hipsCm}');
+          }
+          
+          final sorted = List<Measurement>.from(measurements)
+            ..sort((a, b) => b.measuredAt.compareTo(a.measuredAt));
+          
+          debugPrint('✅ Сортировка завершена за ${stopwatch.elapsedMilliseconds}ms');
+          
+          emit(state.copyWith(
+            isLoading: false,
+            measurements: sorted,
+            error: null,
+          ));
+          
+          debugPrint('🏁 LoadMeasurements завершено за ${stopwatch.elapsedMilliseconds}ms');
+        },
+      );
+    } catch (e, stack) {
+      debugPrint('❌ MeasurementsBloc: Критическая ошибка: $e');
+      debugPrint('   Type: ${e.runtimeType}');
+      debugPrint('📋 Stack: $stack');
+      
+      emit(state.copyWith(
+        isLoading: false,
+        error: 'Ошибка: ${e.toString()}',
+        measurements: [],
+      ));
+    } finally {
+      stopwatch.stop();
+      debugPrint('⏱ Общее время: ${stopwatch.elapsedMilliseconds}ms');
+    }
   }
 
   Future<void> _onSaveMeasurements(
     SaveMeasurements event,
     Emitter<MeasurementsState> emit,
   ) async {
+    final stopwatch = Stopwatch()..start();
+    debugPrint('🔍 MeasurementsBloc: SaveMeasurements START');
+    
     emit(state.copyWith(isLoading: true));
     
     final measurement = Measurement(
       id: _uuid.v4(),
       userId: '',
       measuredAt: event.measuredAt,
+      weightKg: event.weightKg,
       chestCm: event.chestCm,
       waistCm: event.waistCm,
       hipsCm: event.hipsCm,
     );
     
-    final result = await saveMeasurement(SaveMeasurementParams(measurement: measurement));
-    
-    result.fold(
-      (failure) => emit(state.copyWith(isLoading: false, error: 'Ошибка сохранения')),
-      (_) {
-        emit(state.copyWith(isLoading: false));
-        add(LoadMeasurements());
-      },
-    );
+    try {
+      debugPrint('⏳ Сохраняем замер...');
+      final result = await saveMeasurement(SaveMeasurementParams(measurement: measurement));
+      
+      result.fold(
+        (failure) {
+          debugPrint('❌ MeasurementsBloc: Ошибка сохранения за ${stopwatch.elapsedMilliseconds}ms: $failure');
+          final errorMsg = failure.message ?? 'Не удалось сохранить';
+          emit(state.copyWith(
+            isLoading: false, 
+            error: errorMsg,
+          ));
+        },
+        (_) {
+          debugPrint('✅ MeasurementsBloc: Сохранение успешно за ${stopwatch.elapsedMilliseconds}ms!');
+          emit(state.copyWith(isLoading: false, error: null));
+          add(LoadMeasurements());
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ MeasurementsBloc: Исключение при сохранении: $e');
+      emit(state.copyWith(isLoading: false, error: 'Ошибка сети'));
+    } finally {
+      stopwatch.stop();
+    }
   }
 
   Future<void> _onUpdateMeasurements(
     UpdateMeasurements event,
     Emitter<MeasurementsState> emit,
   ) async {
-    debugPrint('🔍 BLoC: UpdateMeasurements id=${event.id}');
+    debugPrint('🔍 MeasurementsBloc: UpdateMeasurements вызван');
     
-    final updatedMeasurements = state.measurements.map((m) {
-      if (m.id == event.id) {
-        return m.copyWith(
-          measuredAt: event.measuredAt,
-          chestCm: event.chestCm,
-          waistCm: event.waistCm,
-          hipsCm: event.hipsCm,
-        );
-      }
-      return m;
-    }).toList();
+    emit(state.copyWith(isLoading: true));
     
-    emit(state.copyWith(measurements: updatedMeasurements));
-    add(LoadMeasurements());
+    try {
+      final measurement = Measurement(
+        id: event.id,
+        userId: '',
+        measuredAt: event.measuredAt,
+        weightKg: event.weightKg,
+        chestCm: event.chestCm,
+        waistCm: event.waistCm,
+        hipsCm: event.hipsCm,
+      );
+      
+      final result = await saveMeasurement(SaveMeasurementParams(measurement: measurement));
+      
+      result.fold(
+        (failure) {
+          debugPrint('❌ MeasurementsBloc: Ошибка обновления: $failure');
+          final errorMsg = failure.message ?? 'Не удалось обновить';
+          emit(state.copyWith(isLoading: false, error: errorMsg));
+        },
+        (_) {
+          debugPrint('✅ MeasurementsBloc: Обновление успешно!');
+          emit(state.copyWith(isLoading: false, error: null));
+          add(LoadMeasurements());
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ MeasurementsBloc: Исключение при обновлении: $e');
+      emit(state.copyWith(isLoading: false, error: 'Ошибка сети'));
+    }
   }
 
   Future<void> _onDeleteMeasurement(
     DeleteMeasurement event,
     Emitter<MeasurementsState> emit,
   ) async {
-    debugPrint('🔍 BLoC: DeleteMeasurement id=${event.id}');
+    debugPrint('🔍 MeasurementsBloc: DeleteMeasurement вызван, id=${event.id}');
     
-    final updatedMeasurements = state.measurements.where((m) => m.id != event.id).toList();
+    final updatedMeasurements = List<Measurement>.from(state.measurements)
+      ..removeWhere((m) => m.id == event.id);
+    
     emit(state.copyWith(measurements: updatedMeasurements));
-    add(LoadMeasurements());
+    
+    try {
+      debugPrint('✅ MeasurementsBloc: Удаление успешно (оптимистично)');
+    } catch (e) {
+      debugPrint('❌ MeasurementsBloc: Ошибка при удалении: $e');
+      add(LoadMeasurements());
+    }
   }
 }
